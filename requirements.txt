@@ -1,0 +1,6 @@
+albumentations
+opencv-python
+pandas
+torch
+torchvision
+tqdm

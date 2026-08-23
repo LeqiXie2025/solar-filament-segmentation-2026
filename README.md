@@ -7,8 +7,8 @@ https://www.kaggle.com/competitions/filament-segmentation-2026
 
 ## What This Repository Is For
 
-This repository is a planning and documentation workspace. It intentionally does
-not contain training code yet.
+This repository is a planning, documentation, and baseline modeling workspace.
+It contains a first PyTorch U-Net baseline for reproducible local training.
 
 Use it to keep:
 
@@ -39,8 +39,8 @@ and the hidden ground-truth mask.
 ## Current Status
 
 - Kaggle account has joined the competition.
-- GitHub repository is for documentation first.
-- No model code has been added.
+- GitHub repository is for documentation and reproducible baseline code.
+- First PyTorch GPU smoke test passed locally.
 - Official data should be kept locally under `data/raw/`.
 
 ## Repository Map
@@ -50,7 +50,35 @@ and the hidden ground-truth mask.
 - `docs/project_structure.md`: what each folder is for.
 - `docs/weekly_plan.md`: week-by-week execution plan.
 - `experiments/experiments.csv`: table for recording model experiments later.
+- `src/`: PyTorch dataset, preprocessing, model, training, prediction, and RLE utilities.
+- `config.py`: default local paths and hyperparameters.
 - `reports/`: final summaries, findings, charts, and handoff notes.
 - `submissions/`: local Kaggle submission files, ignored by Git by default.
 - `data/raw/`: official Kaggle data, ignored by Git by default.
 - `data/samples/`: small local visual samples, ignored by Git by default.
+
+## Baseline Commands
+
+Install missing dependencies if needed:
+
+```powershell
+D:\python3.10.11\python.exe -m pip install -r requirements.txt
+```
+
+Check that PyTorch can use the local GPU:
+
+```powershell
+D:\python3.10.11\python.exe -m src.smoke_gpu
+```
+
+Train the first baseline after the Kaggle data is downloaded into `data/raw/`:
+
+```powershell
+D:\python3.10.11\python.exe -m src.train --epochs 20 --image-size 768 --batch-size 2
+```
+
+Generate a Kaggle submission from the best local checkpoint:
+
+```powershell
+D:\python3.10.11\python.exe -m src.predict --output submissions/submission_unet_baseline.csv
+```
