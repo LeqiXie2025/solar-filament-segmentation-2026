@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 
-import cv2
 import numpy as np
 import pandas as pd
 import torch
@@ -9,8 +8,8 @@ from tqdm import tqdm
 
 import config
 from src.dataset import read_gray_image
-from src.masks import encode_binary_mask, split_instances
-from src.model import UNet
+from src.masks import encode_binary_mask, postprocess_binary_mask, split_instances
+from src.model_factory import create_model_from_checkpoint
 from src.preprocessing import make_input_channels, solar_disk_mask
 
 
@@ -24,11 +23,74 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tile-size", type=int, default=config.INFER_TILE_SIZE)
     parser.add_argument("--stride", type=int, default=config.INFER_STRIDE)
     parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--min-area", type=int, default=config.MIN_COMPONENT_AREA)
+    parser.add_argument("--max-instances", type=int, default=0)
+    parser.add_argument("--morphology", choices=["none", "close", "openclose"], default="close")
+    parser.add_argument("--instance-method", choices=["connected", "watershed"], default="connected")
+    parser.add_argument("--watershed-peak-rel", type=float, default=0.45)
+    parser.add_argument("--watershed-peak-abs", type=float, default=3.0)
+    parser.add_argument("--watershed-min-component-area", type=int, default=0)
+    parser.add_argument("--tta", choices=["none", "hflip", "hvflip"], default="none")
     return parser.parse_args()
 
 
 @torch.no_grad()
 def sliding_window_predict(
+    model,
+    image: np.ndarray,
+    device,
+    tile_size: int,
+    stride: int,
+    batch_size: int,
+    tta: str = "none",
+) -> np.ndarray:
+    def predict_once(input_image: np.ndarray) -> np.ndarray:
+        height, width = input_image.shape
+        channels = make_input_channels(input_image)
+        prob_sum = np.zeros((height, width), dtype=np.float32)
+        weight_sum = np.zeros((height, width), dtype=np.float32)
+
+        y_starts = list(range(0, max(height - tile_size, 0) + 1, stride))
+        x_starts = list(range(0, max(width - tile_size, 0) + 1, stride))
+        if y_starts[-1] != height - tile_size:
+            y_starts.append(height - tile_size)
+        if x_starts[-1] != width - tile_size:
+            x_starts.append(width - tile_size)
+
+        window = np.outer(np.hanning(tile_size), np.hanning(tile_size)).astype(np.float32)
+        window = np.maximum(window, 1e-3)
+
+        coords = [(y0, x0) for y0 in y_starts for x0 in x_starts]
+        for start in range(0, len(coords), batch_size):
+            batch_coords = coords[start : start + batch_size]
+            tiles = [
+                channels[:, y0 : y0 + tile_size, x0 : x0 + tile_size]
+                for y0, x0 in batch_coords
+            ]
+            tensor = torch.from_numpy(np.stack(tiles)).float().to(device)
+            logits = model(tensor)
+            probs_batch = torch.sigmoid(logits)[:, 0].detach().cpu().numpy()
+            for (y0, x0), probs in zip(batch_coords, probs_batch):
+                prob_sum[y0 : y0 + tile_size, x0 : x0 + tile_size] += probs * window
+                weight_sum[y0 : y0 + tile_size, x0 : x0 + tile_size] += window
+
+        return prob_sum / np.maximum(weight_sum, 1e-6)
+
+    predictions = [predict_once(image)]
+    if tta in {"hflip", "hvflip"}:
+        pred = predict_once(np.ascontiguousarray(np.fliplr(image)))
+        predictions.append(np.ascontiguousarray(np.fliplr(pred)))
+    if tta == "hvflip":
+        pred = predict_once(np.ascontiguousarray(np.flipud(image)))
+        predictions.append(np.ascontiguousarray(np.flipud(pred)))
+        pred = predict_once(np.ascontiguousarray(np.flipud(np.fliplr(image))))
+        predictions.append(np.ascontiguousarray(np.fliplr(np.flipud(pred))))
+
+    return np.mean(predictions, axis=0).astype(np.float32)
+
+
+@torch.no_grad()
+def _legacy_sliding_window_predict(
     model,
     image: np.ndarray,
     device,
@@ -81,10 +143,7 @@ def main() -> None:
     checkpoint = torch.load(args.checkpoint, map_location=device)
     threshold = args.threshold if args.threshold is not None else float(checkpoint.get("threshold", config.PRED_THRESHOLD))
 
-    model = UNet(
-        in_channels=int(checkpoint.get("in_channels", config.IN_CHANNELS)),
-        base_channels=int(checkpoint.get("base_channels", config.BASE_CHANNELS)),
-    ).to(device)
+    model = create_model_from_checkpoint(checkpoint).to(device)
     model.load_state_dict(checkpoint["model"])
     model.eval()
 
@@ -104,16 +163,26 @@ def main() -> None:
             tile_size=args.tile_size,
             stride=args.stride,
             batch_size=args.batch_size,
+            tta=args.tta,
         )
         disk = solar_disk_mask(*image.shape)
         binary = (probs > threshold).astype(np.uint8)
         binary[~disk] = 0
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+        binary = postprocess_binary_mask(binary, args.morphology)
 
         image_id = path.stem
-        instances = split_instances(binary, config.MIN_COMPONENT_AREA)
+        instances = split_instances(
+            binary,
+            args.min_area,
+            method=args.instance_method,
+            watershed_peak_rel=args.watershed_peak_rel,
+            watershed_peak_abs=args.watershed_peak_abs,
+            watershed_min_component_area=args.watershed_min_component_area or None,
+        )
+        instances = sorted(instances, key=lambda instance: int(instance.sum()), reverse=True)
+        if args.max_instances:
+            instances = instances[: args.max_instances]
         for idx, instance in enumerate(instances, start=1):
             rows.append(
                 {

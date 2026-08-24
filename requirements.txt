@@ -1,6 +1,8 @@
 albumentations
 opencv-python
 pandas
+pycocotools
+segmentation-models-pytorch
 torch
 torchvision
 tqdm

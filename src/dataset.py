@@ -27,6 +27,7 @@ class FilamentPatchDataset(Dataset):
         patch_size: int,
         augment: bool,
         positive_patch_prob: float = 0.6,
+        samples_per_epoch: int | None = None,
     ) -> None:
         self.image_ids = list(image_ids)
         self.image_info = image_info
@@ -35,9 +36,10 @@ class FilamentPatchDataset(Dataset):
         self.patch_size = int(patch_size)
         self.augment = augment
         self.positive_patch_prob = positive_patch_prob
+        self.samples_per_epoch = samples_per_epoch
 
     def __len__(self) -> int:
-        return len(self.image_ids)
+        return self.samples_per_epoch or len(self.image_ids)
 
     def _choose_patch(self, mask: np.ndarray) -> tuple[int, int]:
         height, width = mask.shape
@@ -79,7 +81,7 @@ class FilamentPatchDataset(Dataset):
         return np.ascontiguousarray(image), np.ascontiguousarray(mask)
 
     def __getitem__(self, idx: int):
-        image_id = self.image_ids[idx]
+        image_id = self.image_ids[idx % len(self.image_ids)]
         info = self.image_info[image_id]
         image = read_gray_image(self.image_dir / info["file_name"])
         mask = self.masks_by_image[image_id].astype(np.float32)
@@ -101,7 +103,29 @@ class FilamentPatchDataset(Dataset):
         return image_tensor, mask_tensor, info["file_name"]
 
 
+def merge_duplicate_file_records(image_info: dict, masks_by_image: dict) -> tuple[dict, dict]:
+    merged_info = {}
+    merged_masks = {}
+    for image_id, info in image_info.items():
+        file_name = info["file_name"]
+        if file_name not in merged_info:
+            merged_info[file_name] = dict(info)
+            merged_info[file_name]["id"] = file_name
+            merged_masks[file_name] = masks_by_image[image_id].copy()
+        else:
+            merged_masks[file_name] = np.maximum(merged_masks[file_name], masks_by_image[image_id])
+    return merged_info, merged_masks
+
+
 def sorted_time_split(image_info: dict, val_fraction: float) -> tuple[list[int], list[int]]:
     image_ids = sorted(image_info.keys(), key=lambda image_id: image_info[image_id]["file_name"])
     val_count = max(1, int(round(len(image_ids) * val_fraction)))
     return image_ids[:-val_count], image_ids[-val_count:]
+
+
+def random_split(image_info: dict, val_fraction: float, seed: int) -> tuple[list[int], list[int]]:
+    image_ids = sorted(image_info.keys(), key=lambda image_id: image_info[image_id]["file_name"])
+    rng = random.Random(seed)
+    rng.shuffle(image_ids)
+    val_count = max(1, int(round(len(image_ids) * val_fraction)))
+    return image_ids[val_count:], image_ids[:val_count]

@@ -92,7 +92,7 @@ def encode_binary_mask(mask: np.ndarray) -> str:
     return encode_coco_counts(binary_mask_to_counts(mask))
 
 
-def split_instances(binary_mask: np.ndarray, min_area: int) -> list[np.ndarray]:
+def _connected_component_instances(binary_mask: np.ndarray, min_area: int) -> list[np.ndarray]:
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
         binary_mask.astype(np.uint8), connectivity=8
     )
@@ -102,6 +102,91 @@ def split_instances(binary_mask: np.ndarray, min_area: int) -> list[np.ndarray]:
         if area >= min_area:
             instances.append((labels == label_id).astype(np.uint8))
     return instances
+
+
+def _watershed_split_component(
+    component: np.ndarray,
+    min_area: int,
+    peak_rel: float,
+    peak_abs: float,
+) -> list[np.ndarray]:
+    distance = cv2.distanceTransform(component.astype(np.uint8), cv2.DIST_L2, 5)
+    max_distance = float(distance.max())
+    if max_distance <= 0:
+        return []
+
+    peak_threshold = max(float(peak_abs), max_distance * float(peak_rel))
+    peak_mask = (distance >= peak_threshold).astype(np.uint8)
+    num_markers, markers = cv2.connectedComponents(peak_mask, connectivity=8)
+    if num_markers <= 2:
+        return [component.astype(np.uint8)] if int(component.sum()) >= min_area else []
+
+    elevation = cv2.normalize(distance, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    elevation = 255 - elevation
+    markers = markers.astype(np.int32)
+    markers[component == 0] = 0
+    cv2.watershed(cv2.cvtColor(elevation, cv2.COLOR_GRAY2BGR), markers)
+
+    split = []
+    for marker_id in range(1, num_markers):
+        instance = ((markers == marker_id) & (component > 0)).astype(np.uint8)
+        if int(instance.sum()) >= min_area:
+            split.append(instance)
+
+    if not split and int(component.sum()) >= min_area:
+        split.append(component.astype(np.uint8))
+    return split
+
+
+def split_instances(
+    binary_mask: np.ndarray,
+    min_area: int,
+    method: str = "connected",
+    watershed_peak_rel: float = 0.45,
+    watershed_peak_abs: float = 3.0,
+    watershed_min_component_area: int | None = None,
+) -> list[np.ndarray]:
+    if method == "connected":
+        return _connected_component_instances(binary_mask, min_area)
+    if method != "watershed":
+        raise ValueError(f"Unknown instance split method: {method}")
+
+    split_min_area = watershed_min_component_area or max(min_area * 2, min_area + 1)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+        binary_mask.astype(np.uint8), connectivity=8
+    )
+    instances = []
+    for label_id in range(1, num_labels):
+        area = int(stats[label_id, cv2.CC_STAT_AREA])
+        if area < min_area:
+            continue
+        component = (labels == label_id).astype(np.uint8)
+        if area < split_min_area:
+            instances.append(component)
+            continue
+        instances.extend(
+            _watershed_split_component(
+                component,
+                min_area=min_area,
+                peak_rel=watershed_peak_rel,
+                peak_abs=watershed_peak_abs,
+            )
+        )
+    return instances
+
+
+def postprocess_binary_mask(binary_mask: np.ndarray, mode: str = "close") -> np.ndarray:
+    if mode == "none":
+        return binary_mask.astype(np.uint8)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    if mode == "close":
+        return cv2.morphologyEx(binary_mask.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+    if mode == "openclose":
+        opened = cv2.morphologyEx(binary_mask.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+        return cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
+
+    raise ValueError(f"Unknown morphology mode: {mode}")
 
 
 def dice_score(pred: np.ndarray, target: np.ndarray, eps: float = 1e-6) -> float:
