@@ -1,1 +1,0 @@
-experiment_id,date,model,input_size,loss,augmentation,validation_dice,public_score,submission_file,git_commit,notes
