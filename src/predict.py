@@ -1,0 +1,131 @@
+import argparse
+from pathlib import Path
+
+import cv2
+import numpy as np
+import pandas as pd
+import torch
+from tqdm import tqdm
+
+import config
+from src.dataset import read_gray_image
+from src.masks import encode_binary_mask, split_instances
+from src.model import UNet
+from src.preprocessing import make_input_channels, solar_disk_mask
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    parser.add_argument("--checkpoint", type=Path, default=config.MODEL_DIR / "unet_baseline_best.pth")
+    parser.add_argument("--output", type=Path, default=config.SUBMISSION_DIR / "submission_unet_baseline.csv")
+    parser.add_argument("--threshold", type=float, default=None)
+    parser.add_argument("--limit", type=int, default=0, help="Run only the first N test images for a dry run.")
+    parser.add_argument("--tile-size", type=int, default=config.INFER_TILE_SIZE)
+    parser.add_argument("--stride", type=int, default=config.INFER_STRIDE)
+    parser.add_argument("--batch-size", type=int, default=8)
+    return parser.parse_args()
+
+
+@torch.no_grad()
+def sliding_window_predict(
+    model,
+    image: np.ndarray,
+    device,
+    tile_size: int,
+    stride: int,
+    batch_size: int,
+) -> np.ndarray:
+    height, width = image.shape
+    channels = make_input_channels(image)
+    prob_sum = np.zeros((height, width), dtype=np.float32)
+    weight_sum = np.zeros((height, width), dtype=np.float32)
+
+    y_starts = list(range(0, max(height - tile_size, 0) + 1, stride))
+    x_starts = list(range(0, max(width - tile_size, 0) + 1, stride))
+    if y_starts[-1] != height - tile_size:
+        y_starts.append(height - tile_size)
+    if x_starts[-1] != width - tile_size:
+        x_starts.append(width - tile_size)
+
+    window = np.outer(np.hanning(tile_size), np.hanning(tile_size)).astype(np.float32)
+    window = np.maximum(window, 1e-3)
+
+    coords = [(y0, x0) for y0 in y_starts for x0 in x_starts]
+    for start in range(0, len(coords), batch_size):
+        batch_coords = coords[start : start + batch_size]
+        tiles = [
+            channels[:, y0 : y0 + tile_size, x0 : x0 + tile_size]
+            for y0, x0 in batch_coords
+        ]
+        tensor = torch.from_numpy(np.stack(tiles)).float().to(device)
+        logits = model(tensor)
+        probs_batch = torch.sigmoid(logits)[:, 0].detach().cpu().numpy()
+        for (y0, x0), probs in zip(batch_coords, probs_batch):
+            prob_sum[y0 : y0 + tile_size, x0 : x0 + tile_size] += probs * window
+            weight_sum[y0 : y0 + tile_size, x0 : x0 + tile_size] += window
+
+    return prob_sum / np.maximum(weight_sum, 1e-6)
+
+
+def main() -> None:
+    args = parse_args()
+    test_dir = args.data_dir / "test_images"
+    if not test_dir.exists():
+        raise FileNotFoundError(f"Expected test images at {test_dir}")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    if device.type == "cuda":
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+    checkpoint = torch.load(args.checkpoint, map_location=device)
+    threshold = args.threshold if args.threshold is not None else float(checkpoint.get("threshold", config.PRED_THRESHOLD))
+
+    model = UNet(
+        in_channels=int(checkpoint.get("in_channels", config.IN_CHANNELS)),
+        base_channels=int(checkpoint.get("base_channels", config.BASE_CHANNELS)),
+    ).to(device)
+    model.load_state_dict(checkpoint["model"])
+    model.eval()
+
+    test_files = sorted(
+        [p for p in test_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}]
+    )
+    if args.limit:
+        test_files = test_files[: args.limit]
+    rows = []
+
+    for path in tqdm(test_files, desc="predict"):
+        image = read_gray_image(path)
+        probs = sliding_window_predict(
+            model,
+            image,
+            device,
+            tile_size=args.tile_size,
+            stride=args.stride,
+            batch_size=args.batch_size,
+        )
+        disk = solar_disk_mask(*image.shape)
+        binary = (probs > threshold).astype(np.uint8)
+        binary[~disk] = 0
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+
+        image_id = path.stem
+        instances = split_instances(binary, config.MIN_COMPONENT_AREA)
+        for idx, instance in enumerate(instances, start=1):
+            rows.append(
+                {
+                    "filament_id": f"{image_id}_{idx}",
+                    "segmentation_rle": encode_binary_mask(instance),
+                }
+            )
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows, columns=["filament_id", "segmentation_rle"]).to_csv(args.output, index=False)
+    print(f"saved {args.output} rows={len(rows)} threshold={threshold}")
+
+
+if __name__ == "__main__":
+    main()
