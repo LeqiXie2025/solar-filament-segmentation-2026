@@ -9,9 +9,10 @@ from tqdm import tqdm
 
 import config
 from src.dataset import FilamentPatchDataset, merge_duplicate_file_records, random_split, sorted_time_split
-from src.losses import DiceBCELoss
+from src.losses import build_loss
 from src.masks import dice_score, load_coco_binary_masks
 from src.model_factory import create_model
+from src.validation import evaluate_full_image_metric
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,12 +25,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--debug-limit", type=int, default=0)
     parser.add_argument("--samples-per-epoch", type=int, default=0)
     parser.add_argument("--positive-patch-prob", type=float, default=0.65)
+    parser.add_argument(
+        "--small-component-prob",
+        type=float,
+        default=0.0,
+        help="Within positive patches, probability of sampling from the smaller half of mask components.",
+    )
+    parser.add_argument(
+        "--scale-jitter",
+        type=float,
+        default=0.0,
+        help="Randomly crop larger/smaller context before resizing to image_size; 0 disables multiscale training.",
+    )
     parser.add_argument("--resume", type=Path, default=None)
     parser.add_argument("--output", type=Path, default=config.MODEL_DIR / "unet_baseline_best.pth")
-    parser.add_argument("--split", choices=["time", "random"], default="time")
+    parser.add_argument("--split", choices=["time", "random", "all"], default="time")
     parser.add_argument("--patience", type=int, default=0)
     parser.add_argument("--min-delta", type=float, default=1e-4)
     parser.add_argument("--grad-clip", type=float, default=1.0)
+    parser.add_argument("--seed", type=int, default=config.SEED)
     parser.add_argument(
         "--arch",
         choices=["custom_unet", "smp_unet", "smp_unetplusplus", "smp_deeplabv3plus"],
@@ -37,6 +51,27 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--encoder-name", default="resnet34")
     parser.add_argument("--encoder-weights", default=None)
+    parser.add_argument(
+        "--loss",
+        choices=["dice_bce", "tversky", "focal_tversky", "dice_focal"],
+        default="dice_bce",
+    )
+    parser.add_argument(
+        "--save-metric",
+        choices=["patch_dice", "full_dice", "mean_dice_matched", "pq"],
+        default="patch_dice",
+        help="Metric used for checkpoint selection.",
+    )
+    parser.add_argument("--full-val-interval", type=int, default=1)
+    parser.add_argument("--full-val-limit", type=int, default=8)
+    parser.add_argument("--full-val-thresholds", type=float, nargs="+", default=[0.35, 0.40, 0.45, 0.50])
+    parser.add_argument("--full-val-min-areas", type=int, nargs="+", default=[40, 80, 160])
+    parser.add_argument("--full-val-tile-size", type=int, default=512)
+    parser.add_argument("--full-val-stride", type=int, default=256)
+    parser.add_argument("--full-val-batch-size", type=int, default=8)
+    parser.add_argument("--full-val-morphology", choices=["none", "close", "openclose"], default="close")
+    parser.add_argument("--full-val-instance-method", choices=["connected", "watershed"], default="connected")
+    parser.add_argument("--full-val-tta", choices=["none", "hflip", "hvflip"], default="none")
     return parser.parse_args()
 
 
@@ -63,7 +98,7 @@ def evaluate(model, loader, device, threshold: float) -> float:
 
 def main() -> None:
     args = parse_args()
-    seed_everything(config.SEED)
+    seed_everything(args.seed)
 
     train_dir = args.data_dir / "train_images"
     annotation_path = args.data_dir / "train_annotations.json"
@@ -87,7 +122,10 @@ def main() -> None:
     print(f"Using {len(image_info)} annotated images present in the local train_images directory")
 
     if args.split == "random":
-        train_ids, val_ids = random_split(image_info, config.VAL_FRACTION, config.SEED)
+        train_ids, val_ids = random_split(image_info, config.VAL_FRACTION, args.seed)
+    elif args.split == "all":
+        train_ids = sorted(image_info.keys(), key=lambda image_id: image_info[image_id]["file_name"])
+        _, val_ids = sorted_time_split(image_info, config.VAL_FRACTION)
     else:
         train_ids, val_ids = sorted_time_split(image_info, config.VAL_FRACTION)
     print(f"Split={args.split}: train={len(train_ids)} val={len(val_ids)}")
@@ -104,6 +142,8 @@ def main() -> None:
         args.image_size,
         True,
         positive_patch_prob=args.positive_patch_prob,
+        small_component_prob=args.small_component_prob,
+        scale_jitter=args.scale_jitter,
         samples_per_epoch=samples_per_epoch,
     )
     val_ds = FilamentPatchDataset(val_ids, image_info, masks_by_image, train_dir, args.image_size, False)
@@ -146,7 +186,7 @@ def main() -> None:
         patience=2,
         min_lr=1e-6,
     )
-    criterion = DiceBCELoss()
+    criterion = build_loss(args.loss)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
 
     config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -174,23 +214,76 @@ def main() -> None:
             losses.append(float(loss.detach().cpu()))
 
         val_dice = evaluate(model, val_loader, device, config.PRED_THRESHOLD)
-        scheduler.step(val_dice)
-        current_lr = optimizer.param_groups[0]["lr"]
-        print(f"epoch={epoch} loss={np.mean(losses):.5f} val_dice={val_dice:.5f} lr={current_lr:.2e}")
+        selection_score = val_dice
+        full_val_summary = None
+        if args.save_metric != "patch_dice" and (epoch % max(args.full_val_interval, 1) == 0):
+            if args.full_val_limit:
+                start = ((epoch - 1) * args.full_val_limit) % len(val_ids)
+                full_val_ids = [val_ids[(start + i) % len(val_ids)] for i in range(args.full_val_limit)]
+            else:
+                full_val_ids = val_ids
+            full_val_summary = evaluate_full_image_metric(
+                model=model,
+                image_ids=full_val_ids,
+                image_info=image_info,
+                masks_by_image=masks_by_image,
+                image_dir=train_dir,
+                annotation_path=annotation_path,
+                device=device,
+                thresholds=args.full_val_thresholds,
+                min_areas=args.full_val_min_areas,
+                tile_size=args.full_val_tile_size,
+                stride=args.full_val_stride,
+                batch_size=args.full_val_batch_size,
+                morphology=args.full_val_morphology,
+                instance_method=args.full_val_instance_method,
+                tta=args.full_val_tta,
+            )
+            best_full = full_val_summary["best"]
+            metric_key = "full_dice" if args.save_metric == "full_dice" else args.save_metric
+            selection_score = float(best_full[metric_key])
 
-        if val_dice > best_score + args.min_delta:
-            best_score = val_dice
+        scheduler.step(selection_score)
+        current_lr = optimizer.param_groups[0]["lr"]
+        message = (
+            f"epoch={epoch} loss={np.mean(losses):.5f} patch_dice={val_dice:.5f} "
+            f"select_{args.save_metric}={selection_score:.5f} lr={current_lr:.2e}"
+        )
+        if full_val_summary is not None:
+            best_full = full_val_summary["best"]
+            message += (
+                f" full_best_thr={best_full['threshold']:.2f}"
+                f" full_best_area={best_full['min_area']}"
+                f" full_dice={best_full['full_dice']:.5f}"
+                f" pq={best_full['pq']:.5f}"
+                f" fp={best_full['fp']} fn={best_full['fn']}"
+            )
+        print(message)
+
+        if selection_score > best_score + args.min_delta:
+            best_score = selection_score
             stale_epochs = 0
+            checkpoint_threshold = config.PRED_THRESHOLD
+            checkpoint_min_area = config.MIN_COMPONENT_AREA
+            if full_val_summary is not None:
+                checkpoint_threshold = float(full_val_summary["best"]["threshold"])
+                checkpoint_min_area = int(full_val_summary["best"]["min_area"])
             torch.save(
                 {
                     "model": model.state_dict(),
                     "arch": args.arch,
-                    "val_dice": best_score,
+                    "val_dice": val_dice,
+                    "selection_metric": args.save_metric,
+                    "selection_score": selection_score,
+                    "full_val_best": full_val_summary["best"] if full_val_summary is not None else None,
                     "image_size": args.image_size,
-                    "threshold": config.PRED_THRESHOLD,
+                    "threshold": checkpoint_threshold,
+                    "min_area": checkpoint_min_area,
                     "in_channels": config.IN_CHANNELS,
                     "base_channels": config.BASE_CHANNELS,
                     "encoder_name": args.encoder_name,
+                    "loss": args.loss,
+                    "seed": args.seed,
                 },
                 best_path,
             )
@@ -201,7 +294,7 @@ def main() -> None:
                 print(f"early_stop epoch={epoch} stale_epochs={stale_epochs}")
                 break
 
-    print(f"best_val_dice={best_score:.5f}")
+    print(f"best_{args.save_metric}={best_score:.5f}")
 
 
 if __name__ == "__main__":

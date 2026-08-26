@@ -10,7 +10,7 @@ import config
 from src.dataset import read_gray_image
 from src.masks import encode_binary_mask, postprocess_binary_mask, split_instances
 from src.model_factory import create_model_from_checkpoint
-from src.preprocessing import make_input_channels, solar_disk_mask
+from src.preprocessing import detect_solar_disk, make_input_channels
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,10 +20,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=config.SUBMISSION_DIR / "submission_unet_baseline.csv")
     parser.add_argument("--threshold", type=float, default=None)
     parser.add_argument("--limit", type=int, default=0, help="Run only the first N test images for a dry run.")
+    parser.add_argument("--start", type=int, default=0, help="Skip the first N test images (for chunked runs).")
     parser.add_argument("--tile-size", type=int, default=config.INFER_TILE_SIZE)
     parser.add_argument("--stride", type=int, default=config.INFER_STRIDE)
     parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--min-area", type=int, default=config.MIN_COMPONENT_AREA)
+    parser.add_argument("--min-area", type=int, default=None)
+    parser.add_argument("--min-areas", type=int, nargs="+", default=None,
+                        help="Emit one submission per min_area in a single inference pass.")
     parser.add_argument("--max-instances", type=int, default=0)
     parser.add_argument("--morphology", choices=["none", "close", "openclose"], default="close")
     parser.add_argument("--instance-method", choices=["connected", "watershed"], default="connected")
@@ -142,6 +145,7 @@ def main() -> None:
         print(f"GPU: {torch.cuda.get_device_name(0)}")
     checkpoint = torch.load(args.checkpoint, map_location=device)
     threshold = args.threshold if args.threshold is not None else float(checkpoint.get("threshold", config.PRED_THRESHOLD))
+    min_area = args.min_area if args.min_area is not None else int(checkpoint.get("min_area", config.MIN_COMPONENT_AREA))
 
     model = create_model_from_checkpoint(checkpoint).to(device)
     model.load_state_dict(checkpoint["model"])
@@ -150,9 +154,12 @@ def main() -> None:
     test_files = sorted(
         [p for p in test_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}]
     )
+    if args.start:
+        test_files = test_files[args.start:]
     if args.limit:
         test_files = test_files[: args.limit]
-    rows = []
+    min_areas = args.min_areas if args.min_areas else [min_area]
+    rows_by_area = {a: [] for a in min_areas}
 
     for path in tqdm(test_files, desc="predict"):
         image = read_gray_image(path)
@@ -165,35 +172,42 @@ def main() -> None:
             batch_size=args.batch_size,
             tta=args.tta,
         )
-        disk = solar_disk_mask(*image.shape)
+        disk = detect_solar_disk(image)
         binary = (probs > threshold).astype(np.uint8)
         binary[~disk] = 0
 
         binary = postprocess_binary_mask(binary, args.morphology)
 
         image_id = path.stem
-        instances = split_instances(
-            binary,
-            args.min_area,
-            method=args.instance_method,
-            watershed_peak_rel=args.watershed_peak_rel,
-            watershed_peak_abs=args.watershed_peak_abs,
-            watershed_min_component_area=args.watershed_min_component_area or None,
-        )
-        instances = sorted(instances, key=lambda instance: int(instance.sum()), reverse=True)
-        if args.max_instances:
-            instances = instances[: args.max_instances]
-        for idx, instance in enumerate(instances, start=1):
-            rows.append(
-                {
-                    "filament_id": f"{image_id}_{idx}",
-                    "segmentation_rle": encode_binary_mask(instance),
-                }
+        for min_area in min_areas:
+            instances = split_instances(
+                binary,
+                min_area,
+                method=args.instance_method,
+                watershed_peak_rel=args.watershed_peak_rel,
+                watershed_peak_abs=args.watershed_peak_abs,
+                watershed_min_component_area=args.watershed_min_component_area or None,
             )
+            instances = sorted(instances, key=lambda instance: int(instance.sum()), reverse=True)
+            if args.max_instances:
+                instances = instances[: args.max_instances]
+            for idx, instance in enumerate(instances, start=1):
+                rows_by_area[min_area].append(
+                    {
+                        "filament_id": f"{image_id}_{idx}",
+                        "segmentation_rle": encode_binary_mask(instance),
+                    }
+                )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows, columns=["filament_id", "segmentation_rle"]).to_csv(args.output, index=False)
-    print(f"saved {args.output} rows={len(rows)} threshold={threshold}")
+    for min_area in min_areas:
+        if len(min_areas) == 1:
+            out = args.output
+        else:
+            out = args.output.with_name(f"{args.output.stem}_area{min_area}{args.output.suffix}")
+        rows = rows_by_area[min_area]
+        pd.DataFrame(rows, columns=["filament_id", "segmentation_rle"]).to_csv(out, index=False)
+        print(f"saved {out} rows={len(rows)} threshold={threshold} min_area={min_area}")
 
 
 if __name__ == "__main__":
