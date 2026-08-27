@@ -1,14 +1,16 @@
 import argparse
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
 
 import config
+from src.crop_refiner_utils import crop_bounds_from_bbox, crop_with_padding, make_refiner_channels, seed_from_bbox
 from src.dataset import read_gray_image
-from src.masks import encode_binary_mask
+from src.masks import encode_binary_mask, postprocess_binary_mask
 from src.metrics import greedy_match, mean_dice_matched, panoptic_quality
 from src.model_factory import create_model_from_checkpoint
 from src.predict_detect_refine import make_masks_disjoint, mask_nms, patch_torchvision_nms, refine_boxes, time_val_names
@@ -30,8 +32,79 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--box-pad", type=float, default=0.50)
     parser.add_argument("--imgsz", type=int, nargs="+", default=[1024, 1280])
     parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--refiner-tta", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
     return parser.parse_args()
+
+
+def _flip_tensor(batch: torch.Tensor, mode: str) -> torch.Tensor:
+    if mode == "identity":
+        return batch
+    if mode == "hflip":
+        return torch.flip(batch, dims=[3])
+    if mode == "vflip":
+        return torch.flip(batch, dims=[2])
+    if mode == "hvflip":
+        return torch.flip(batch, dims=[2, 3])
+    raise ValueError(mode)
+
+
+def _unflip_array(batch: np.ndarray, mode: str) -> np.ndarray:
+    if mode == "identity":
+        return batch
+    if mode == "hflip":
+        return batch[:, :, ::-1]
+    if mode == "vflip":
+        return batch[:, ::-1, :]
+    if mode == "hvflip":
+        return batch[:, ::-1, ::-1]
+    raise ValueError(mode)
+
+
+@torch.no_grad()
+def refine_boxes_tta(refiner, image: np.ndarray, boxes_xyxy: np.ndarray, scores: np.ndarray, device, args, image_size: int):
+    height, width = image.shape
+    instances = []
+    tensors = []
+    metas = []
+    for box in boxes_xyxy:
+        x0, y0, x1, y1 = [float(v) for v in box[:4]]
+        bbox = (x0, y0, max(1.0, x1 - x0), max(1.0, y1 - y0))
+        bounds = crop_bounds_from_bbox(bbox, height, width, pad=args.box_pad, jitter=False)
+        crop = crop_with_padding(image, bounds)
+        crop_rs = cv2.resize(crop, (image_size, image_size), interpolation=cv2.INTER_LINEAR)
+        seed = seed_from_bbox(bbox, bounds, image_size)
+        tensors.append(torch.from_numpy(make_refiner_channels(crop_rs, seed)).float())
+        metas.append(bounds)
+
+    transforms = ("identity", "hflip", "vflip", "hvflip")
+    for start in range(0, len(tensors), args.batch_size):
+        batch = torch.stack(tensors[start : start + args.batch_size]).to(device)
+        prob_sum = None
+        for transform in transforms:
+            transformed = _flip_tensor(batch, transform)
+            prob = torch.sigmoid(refiner(transformed))[:, 0].detach().cpu().numpy()
+            prob = _unflip_array(prob, transform)
+            prob_sum = prob if prob_sum is None else prob_sum + prob
+        probs = prob_sum / float(len(transforms))
+        batch_scores = scores[start : start + args.batch_size]
+        for prob, bounds, score in zip(probs, metas[start : start + args.batch_size], batch_scores):
+            x0, y0, x1, y1 = bounds
+            crop_h = max(1, y1 - y0)
+            crop_w = max(1, x1 - x0)
+            prob_full = cv2.resize(prob, (crop_w, crop_h), interpolation=cv2.INTER_LINEAR)
+            binary_crop = (prob_full > args.threshold).astype(np.uint8)
+            binary_crop = postprocess_binary_mask(binary_crop, "close")
+            sx0, sy0 = max(0, x0), max(0, y0)
+            sx1, sy1 = min(width, x1), min(height, y1)
+            if sx1 <= sx0 or sy1 <= sy0:
+                continue
+            dx0, dy0 = sx0 - x0, sy0 - y0
+            instance = np.zeros((height, width), dtype=np.uint8)
+            instance[sy0:sy1, sx0:sx1] = binary_crop[dy0 : dy0 + (sy1 - sy0), dx0 : dx0 + (sx1 - sx0)]
+            if int(instance.sum()) >= args.min_area:
+                instances.append((instance, float(score)))
+    return instances
 
 
 def main() -> None:
@@ -81,7 +154,10 @@ def main() -> None:
 
         boxes = np.concatenate(all_boxes, axis=0) if all_boxes else np.empty((0, 4), dtype=np.float32)
         scores = np.concatenate(all_scores, axis=0) if all_scores else np.empty((0,), dtype=np.float32)
-        pred_scored = refine_boxes(refiner, image, boxes, scores, device, args, image_size) if len(boxes) else []
+        if len(boxes) and args.refiner_tta:
+            pred_scored = refine_boxes_tta(refiner, image, boxes, scores, device, args, image_size)
+        else:
+            pred_scored = refine_boxes(refiner, image, boxes, scores, device, args, image_size) if len(boxes) else []
         pred_instances = mask_nms(pred_scored, args.mask_nms_iou)
         pred_instances = make_masks_disjoint(pred_instances, args.min_area)
 
@@ -110,6 +186,7 @@ def main() -> None:
                     "min_area": args.min_area,
                     "mask_nms_iou": args.mask_nms_iou,
                     "imgsz": " ".join(str(x) for x in args.imgsz),
+                    "refiner_tta": bool(args.refiner_tta),
                     "pq": float(np.mean(pq_scores)) if pq_scores else 0.0,
                     "mean_dice_matched": float(np.mean(mean_dice_scores)) if mean_dice_scores else 0.0,
                     "tp": total_tp,
