@@ -33,6 +33,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--imgsz", type=int, nargs="+", default=[1024, 1280])
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--refiner-tta", action="store_true")
+    parser.add_argument(
+        "--score-mode",
+        choices=["detector", "meanprob", "detector_meanprob"],
+        default="detector",
+    )
     parser.add_argument("--limit", type=int, default=0)
     return parser.parse_args()
 
@@ -103,7 +108,15 @@ def refine_boxes_tta(refiner, image: np.ndarray, boxes_xyxy: np.ndarray, scores:
             instance = np.zeros((height, width), dtype=np.uint8)
             instance[sy0:sy1, sx0:sx1] = binary_crop[dy0 : dy0 + (sy1 - sy0), dx0 : dx0 + (sx1 - sx0)]
             if int(instance.sum()) >= args.min_area:
-                instances.append((instance, float(score)))
+                mask_probs = prob_full[binary_crop.astype(bool)]
+                mean_prob = float(mask_probs.mean()) if mask_probs.size else 0.0
+                if args.score_mode == "meanprob":
+                    keep_score = mean_prob
+                elif args.score_mode == "detector_meanprob":
+                    keep_score = float(score) * mean_prob
+                else:
+                    keep_score = float(score)
+                instances.append((instance, keep_score))
     return instances
 
 
@@ -187,6 +200,7 @@ def main() -> None:
                     "mask_nms_iou": args.mask_nms_iou,
                     "imgsz": " ".join(str(x) for x in args.imgsz),
                     "refiner_tta": bool(args.refiner_tta),
+                    "score_mode": args.score_mode,
                     "pq": float(np.mean(pq_scores)) if pq_scores else 0.0,
                     "mean_dice_matched": float(np.mean(mean_dice_scores)) if mean_dice_scores else 0.0,
                     "tp": total_tp,
