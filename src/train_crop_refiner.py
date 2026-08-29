@@ -13,6 +13,7 @@ import config
 from src.crop_refiner_utils import (
     crop_bounds_from_bbox,
     crop_with_padding,
+    decode_consensus_mask,
     decode_record_mask,
     load_instance_records,
     make_refiner_channels,
@@ -44,6 +45,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--proposal-json", type=Path, default=None)
     parser.add_argument("--positive-proposal-weight", type=float, default=1.0)
     parser.add_argument("--small-instance-power", type=float, default=0.5)
+    parser.add_argument(
+        "--consensus-targets",
+        action="store_true",
+        help="Train on soft multi-annotator agreement masks while validating against canonical masks.",
+    )
     return parser.parse_args()
 
 
@@ -75,12 +81,14 @@ class RefinerDataset(Dataset):
         augment: bool,
         samples_per_epoch: int | None = None,
         small_instance_power: float = 0.0,
+        consensus_targets: bool = False,
     ) -> None:
         self.records = list(records)
         self.image_dir = Path(image_dir)
         self.image_size = int(image_size)
         self.augment = augment
         self.samples_per_epoch = samples_per_epoch
+        self.consensus_targets = consensus_targets
         positive_areas = [float(record.get("area", 0.0)) for record in self.records if float(record.get("area", 0.0)) > 0]
         reference_area = float(np.median(positive_areas)) if positive_areas else 1.0
         weights = []
@@ -101,13 +109,17 @@ class RefinerDataset(Dataset):
         if self.augment:
             record = self.records[int(np.random.choice(len(self.records), p=self.sample_probabilities))]
         image = read_gray_image(self.image_dir / record["file_name"])
-        mask = decode_record_mask(record)
+        mask = decode_consensus_mask(record) if self.consensus_targets else decode_record_mask(record).astype(np.float32)
         source_bbox = record.get("proposal_bbox", record["bbox"])
         bounds = crop_bounds_from_bbox(source_bbox, image.shape[0], image.shape[1], pad=0.50, jitter=self.augment)
         image_crop = crop_with_padding(image, bounds)
         mask_crop = crop_with_padding(mask, bounds)
         image_crop = cv2.resize(image_crop, (self.image_size, self.image_size), interpolation=cv2.INTER_LINEAR)
-        mask_crop = cv2.resize(mask_crop, (self.image_size, self.image_size), interpolation=cv2.INTER_NEAREST)
+        mask_crop = cv2.resize(
+            mask_crop,
+            (self.image_size, self.image_size),
+            interpolation=cv2.INTER_LINEAR if self.consensus_targets else cv2.INTER_NEAREST,
+        )
         seed = seed_from_bbox(source_bbox, bounds, self.image_size)
 
         if self.augment and random.random() < 0.5:
@@ -176,6 +188,7 @@ def main() -> None:
         augment=True,
         samples_per_epoch=args.samples_per_epoch,
         small_instance_power=args.small_instance_power,
+        consensus_targets=args.consensus_targets,
     )
     val_ds = RefinerDataset(val_records, train_dir, args.image_size, augment=False)
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=0, pin_memory=torch.cuda.is_available())

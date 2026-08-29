@@ -31,6 +31,13 @@ def parse_args() -> argparse.Namespace:
         help="Per-detector confidence thresholds; defaults to --conf for every detector.",
     )
     parser.add_argument("--refiner", type=Path, required=True)
+    parser.add_argument(
+        "--shape-refiner",
+        type=Path,
+        default=None,
+        help="Optional consensus-trained refiner blended only after the primary refiner accepts a proposal.",
+    )
+    parser.add_argument("--shape-weight", type=float, default=0.25)
     parser.add_argument("--proposal-classifier", type=Path, default=None)
     parser.add_argument("--proposal-classifier-threshold", type=float, default=None)
     parser.add_argument("--proposal-classifier-score-weight", type=float, default=0.50)
@@ -147,7 +154,16 @@ def tiled_detect(detector, image: np.ndarray, detector_conf: float, device, args
 
 
 @torch.no_grad()
-def refine_boxes_tta(refiner, image: np.ndarray, boxes_xyxy: np.ndarray, scores: np.ndarray, device, args, image_size: int):
+def refine_boxes_tta(
+    refiner,
+    image: np.ndarray,
+    boxes_xyxy: np.ndarray,
+    scores: np.ndarray,
+    device,
+    args,
+    image_size: int,
+    shape_refiner=None,
+):
     height, width = image.shape
     instances = []
     tensors = []
@@ -166,18 +182,41 @@ def refine_boxes_tta(refiner, image: np.ndarray, boxes_xyxy: np.ndarray, scores:
     for start in range(0, len(tensors), args.batch_size):
         batch = torch.stack(tensors[start : start + args.batch_size]).to(device)
         prob_sum = None
+        shape_prob_sum = None
         for transform in transforms:
             transformed = _flip_tensor(batch, transform)
             prob = torch.sigmoid(refiner(transformed))[:, 0].detach().cpu().numpy()
             prob = _unflip_array(prob, transform)
             prob_sum = prob if prob_sum is None else prob_sum + prob
-        probs = prob_sum / float(len(transforms))
+            if shape_refiner is not None:
+                shape_prob = torch.sigmoid(shape_refiner(transformed))[:, 0].detach().cpu().numpy()
+                shape_prob = _unflip_array(shape_prob, transform)
+                shape_prob_sum = shape_prob if shape_prob_sum is None else shape_prob_sum + shape_prob
+        primary_probs = prob_sum / float(len(transforms))
+        if shape_prob_sum is None:
+            probs = primary_probs
+        else:
+            shape_probs = shape_prob_sum / float(len(transforms))
+            weight = float(args.shape_weight)
+            probs = primary_probs * (1.0 - weight) + shape_probs * weight
         batch_scores = scores[start : start + args.batch_size]
-        for prob, bounds, score in zip(probs, metas[start : start + args.batch_size], batch_scores):
+        batch_primary_probs = primary_probs[: len(batch_scores)]
+        for prob, primary_prob, bounds, score in zip(
+            probs,
+            batch_primary_probs,
+            metas[start : start + args.batch_size],
+            batch_scores,
+        ):
             x0, y0, x1, y1 = bounds
             crop_h = max(1, y1 - y0)
             crop_w = max(1, x1 - x0)
             prob_full = cv2.resize(prob, (crop_w, crop_h), interpolation=cv2.INTER_LINEAR)
+            primary_prob_full = cv2.resize(primary_prob, (crop_w, crop_h), interpolation=cv2.INTER_LINEAR)
+            # The production refiner remains the recognition gate. The consensus
+            # model may adjust boundaries but cannot turn a rejected box into a
+            # new instance, which preserves the primary model's low FP rate.
+            if int((primary_prob_full > args.threshold).sum()) < args.min_area:
+                continue
             binary_crop = (prob_full > args.threshold).astype(np.uint8)
             binary_crop = postprocess_binary_mask(binary_crop, "close")
             sx0, sy0 = max(0, x0), max(0, y0)
@@ -202,6 +241,10 @@ def refine_boxes_tta(refiner, image: np.ndarray, boxes_xyxy: np.ndarray, scores:
 
 def main() -> None:
     args = parse_args()
+    if args.shape_refiner is not None and not args.refiner_tta:
+        raise ValueError("--shape-refiner currently requires --refiner-tta")
+    if not 0.0 <= float(args.shape_weight) <= 1.0:
+        raise ValueError("--shape-weight must be between 0 and 1")
     patch_torchvision_nms()
     from ultralytics import YOLO
 
@@ -225,6 +268,14 @@ def main() -> None:
     refiner.load_state_dict(checkpoint["model"])
     refiner.eval()
     image_size = int(checkpoint.get("image_size", 512))
+    shape_refiner = None
+    if args.shape_refiner is not None:
+        shape_checkpoint = torch.load(args.shape_refiner, map_location=device)
+        if int(shape_checkpoint.get("image_size", image_size)) != image_size:
+            raise ValueError("Primary and shape refiners must use the same image size")
+        shape_refiner = create_model_from_checkpoint(shape_checkpoint).to(device)
+        shape_refiner.load_state_dict(shape_checkpoint["model"])
+        shape_refiner.eval()
     proposal_classifier = None
     proposal_classifier_image_size = 0
     proposal_classifier_pad = 0.0
@@ -302,7 +353,16 @@ def main() -> None:
             weight = float(args.proposal_classifier_score_weight)
             scores = detector_scores ** (1.0 - weight) * classifier_scores**weight
         if len(boxes) and args.refiner_tta:
-            pred_scored = refine_boxes_tta(refiner, image, boxes, scores, device, args, image_size)
+            pred_scored = refine_boxes_tta(
+                refiner,
+                image,
+                boxes,
+                scores,
+                device,
+                args,
+                image_size,
+                shape_refiner=shape_refiner,
+            )
         else:
             pred_scored = refine_boxes(refiner, image, boxes, scores, device, args, image_size) if len(boxes) else []
         pred_instances = mask_nms(pred_scored, args.mask_nms_iou)
@@ -339,6 +399,7 @@ def main() -> None:
                     ),
                     "refiner_tta": bool(args.refiner_tta),
                     "score_mode": args.score_mode,
+                    "shape_weight": float(args.shape_weight) if shape_refiner is not None else 0.0,
                     "pq": float(np.mean(pq_scores)) if pq_scores else 0.0,
                     "mean_dice_matched": float(np.mean(mean_dice_scores)) if mean_dice_scores else 0.0,
                     "tp": total_tp,

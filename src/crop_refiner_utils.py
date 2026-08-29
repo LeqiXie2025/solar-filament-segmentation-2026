@@ -103,6 +103,7 @@ def load_instance_records(annotation_path: Path, allowed_files: set[str] | None 
                 "width": int(info["width"]),
                 "bbox": tuple(float(v) for v in ann["bbox"]),
                 "segmentation": ann.get("segmentation"),
+                "consensus_segmentations": ann.get("consensus_segmentations"),
                 "area": float(ann.get("area", 0)),
             }
         )
@@ -117,3 +118,20 @@ def decode_record_mask(record: dict) -> np.ndarray:
     if isinstance(segmentation, dict):
         return _decode_coco_rle(segmentation, height, width)
     return np.zeros((height, width), dtype=np.uint8)
+
+
+def decode_consensus_mask(record: dict) -> np.ndarray:
+    """Return annotator agreement as a soft mask in [0, 1]."""
+    segmentations = record.get("consensus_segmentations") or []
+    if len(segmentations) <= 1:
+        return decode_record_mask(record).astype(np.float32)
+    height, width = int(record["height"]), int(record["width"])
+    masks = []
+    for segmentation in segmentations:
+        if isinstance(segmentation, list):
+            masks.append(_decode_polygon(segmentation, height, width))
+        elif isinstance(segmentation, dict):
+            masks.append(_decode_coco_rle(segmentation, height, width))
+    if not masks:
+        return decode_record_mask(record).astype(np.float32)
+    return np.mean(np.stack(masks, axis=0).astype(np.float32), axis=0)

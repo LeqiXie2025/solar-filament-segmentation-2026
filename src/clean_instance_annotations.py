@@ -21,6 +21,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dedup-iou", type=float, default=0.5)
     parser.add_argument("--min-area", type=int, default=5)
     parser.add_argument("--cluster-size", type=int, default=1024)
+    parser.add_argument(
+        "--include-cluster-members",
+        action="store_true",
+        help="Store every annotator mask in each canonical instance for consensus-target training.",
+    )
     return parser.parse_args()
 
 
@@ -119,6 +124,8 @@ def main() -> None:
                     "iscrowd": 0,
                 }
             )
+            if args.include_cluster_members:
+                annotation["consensus_segmentations"] = [decoded[index][0].get("segmentation") for index in members]
             clean_annotations.append(annotation)
             ann_id += 1
             areas.append(area)
@@ -143,7 +150,8 @@ def main() -> None:
         "duplicate_clusters": duplicate_clusters,
         "multi_annotator_files": sum(len(rows) > 1 for rows in images_by_file.values()),
         "dedup_iou": args.dedup_iou,
-        "selection": "IoU-cluster medoid annotation",
+        "selection": "IoU-cluster medoid annotation with optional member masks",
+        "cluster_members_stored": bool(args.include_cluster_members),
         "area": {
             "min": int(area_array.min()) if len(area_array) else 0,
             "p10": float(np.percentile(area_array, 10)) if len(area_array) else 0.0,
@@ -156,7 +164,8 @@ def main() -> None:
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(json.dumps(report, indent=2, ensure_ascii=False))
+    # Keep CLI output compatible with Windows terminals using a legacy code page.
+    print(json.dumps(report, indent=2, ensure_ascii=True))
 
 
 if __name__ == "__main__":
