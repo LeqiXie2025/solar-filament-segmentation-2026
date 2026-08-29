@@ -39,6 +39,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mask-nms-iou", type=float, default=0.20)
     parser.add_argument("--box-pad", type=float, default=0.50)
     parser.add_argument("--imgsz", type=int, nargs="+", default=[1024, 1280])
+    parser.add_argument("--tile-size", type=int, default=0)
+    parser.add_argument("--tile-imgsz", type=int, default=0)
+    parser.add_argument("--tile-detector", type=Path, nargs="+", default=None)
+    parser.add_argument("--tile-detector-conf", type=float, nargs="+", default=None)
+    parser.add_argument("--tile-overlap", type=int, default=256)
+    parser.add_argument("--tile-conf", type=float, default=None)
+    parser.add_argument("--tile-border", type=int, default=24)
+    parser.add_argument("--tile-score-weight", type=float, default=1.0)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--refiner-tta", action="store_true")
     parser.add_argument(
@@ -72,6 +80,66 @@ def _unflip_array(batch: np.ndarray, mode: str) -> np.ndarray:
     if mode == "hvflip":
         return batch[:, ::-1, ::-1]
     raise ValueError(mode)
+
+
+def tile_starts(length: int, tile_size: int, overlap: int) -> list[int]:
+    if tile_size <= 0 or tile_size >= length:
+        return [0]
+    stride = max(1, tile_size - overlap)
+    starts = list(range(0, max(1, length - tile_size + 1), stride))
+    last = length - tile_size
+    if starts[-1] != last:
+        starts.append(last)
+    return starts
+
+
+def tiled_detect(detector, image: np.ndarray, detector_conf: float, device, args):
+    tile_size = int(args.tile_size)
+    if tile_size <= 0:
+        return [], []
+    height, width = image.shape
+    boxes_out = []
+    scores_out = []
+    x_starts = tile_starts(width, tile_size, int(args.tile_overlap))
+    y_starts = tile_starts(height, tile_size, int(args.tile_overlap))
+    tile_conf = float(args.tile_conf if args.tile_conf is not None else detector_conf)
+    for y0 in y_starts:
+        for x0 in x_starts:
+            tile = image[y0 : min(height, y0 + tile_size), x0 : min(width, x0 + tile_size)]
+            tile_source = cv2.cvtColor(tile, cv2.COLOR_GRAY2BGR) if tile.ndim == 2 else tile
+            det = detector.predict(
+                source=tile_source,
+                imgsz=int(args.tile_imgsz or tile_size),
+                conf=tile_conf,
+                iou=args.iou,
+                device=0 if device.type == "cuda" else "cpu",
+                verbose=False,
+            )[0]
+            if det.boxes is None or len(det.boxes) == 0:
+                continue
+            boxes = det.boxes.xyxy.detach().cpu().numpy()
+            scores = det.boxes.conf.detach().cpu().numpy()
+            centers_x = (boxes[:, 0] + boxes[:, 2]) * 0.5
+            centers_y = (boxes[:, 1] + boxes[:, 3]) * 0.5
+            border = int(args.tile_border)
+            keep = np.ones(len(boxes), dtype=bool)
+            if x0 > 0:
+                keep &= centers_x >= border
+            if x0 + tile.shape[1] < width:
+                keep &= centers_x < tile.shape[1] - border
+            if y0 > 0:
+                keep &= centers_y >= border
+            if y0 + tile.shape[0] < height:
+                keep &= centers_y < tile.shape[0] - border
+            boxes = boxes[keep]
+            scores = scores[keep]
+            if not len(boxes):
+                continue
+            boxes[:, [0, 2]] += x0
+            boxes[:, [1, 3]] += y0
+            boxes_out.append(boxes)
+            scores_out.append(scores * float(args.tile_score_weight))
+    return boxes_out, scores_out
 
 
 @torch.no_grad()
@@ -140,6 +208,14 @@ def main() -> None:
         detector_confs *= len(detectors)
     if len(detector_confs) != len(detectors):
         raise ValueError("--detector-conf must contain one value or one value per --detector")
+    tile_detectors = [YOLO(str(path)) for path in args.tile_detector] if args.tile_detector else detectors
+    tile_detector_confs = args.tile_detector_conf or [
+        args.tile_conf if args.tile_conf is not None else args.conf
+    ] * len(tile_detectors)
+    if len(tile_detector_confs) == 1 and len(tile_detectors) > 1:
+        tile_detector_confs *= len(tile_detectors)
+    if len(tile_detector_confs) != len(tile_detectors):
+        raise ValueError("--tile-detector-conf must contain one value or one value per tile detector")
     checkpoint = torch.load(args.refiner, map_location=device)
     refiner = create_model_from_checkpoint(checkpoint).to(device)
     refiner.load_state_dict(checkpoint["model"])
@@ -179,6 +255,15 @@ def main() -> None:
                     continue
                 all_boxes.append(det.boxes.xyxy.detach().cpu().numpy())
                 all_scores.append(det.boxes.conf.detach().cpu().numpy())
+            if not args.tile_detector:
+                tile_boxes, tile_scores = tiled_detect(detector, image, detector_conf, device, args)
+                all_boxes.extend(tile_boxes)
+                all_scores.extend(tile_scores)
+        if args.tile_detector:
+            for tile_detector, tile_conf in zip(tile_detectors, tile_detector_confs):
+                tile_boxes, tile_scores = tiled_detect(tile_detector, image, tile_conf, device, args)
+                all_boxes.extend(tile_boxes)
+                all_scores.extend(tile_scores)
 
         boxes = np.concatenate(all_boxes, axis=0) if all_boxes else np.empty((0, 4), dtype=np.float32)
         scores = np.concatenate(all_scores, axis=0) if all_scores else np.empty((0,), dtype=np.float32)
@@ -214,6 +299,7 @@ def main() -> None:
                     "min_area": args.min_area,
                     "mask_nms_iou": args.mask_nms_iou,
                     "imgsz": " ".join(str(x) for x in args.imgsz),
+                    "tile_size": int(args.tile_size),
                     "refiner_tta": bool(args.refiner_tta),
                     "score_mode": args.score_mode,
                     "pq": float(np.mean(pq_scores)) if pq_scores else 0.0,
