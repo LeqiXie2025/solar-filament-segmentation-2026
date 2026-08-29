@@ -1,4 +1,5 @@
 import argparse
+import sys
 from pathlib import Path
 
 import cv2
@@ -38,6 +39,16 @@ def parse_args() -> argparse.Namespace:
         help="Optional consensus-trained refiner blended only after the primary refiner accepts a proposal.",
     )
     parser.add_argument("--shape-weight", type=float, default=0.25)
+    parser.add_argument("--mobile-sam-fallback", action="store_true")
+    parser.add_argument("--mobile-sam-root", type=Path, default=Path(r"D:\codex_models\MobileSAM"))
+    parser.add_argument(
+        "--mobile-sam-checkpoint",
+        type=Path,
+        default=Path(r"D:\codex_models\MobileSAM\weights\mobile_sam.pt"),
+    )
+    parser.add_argument("--mobile-sam-iou-threshold", type=float, default=0.80)
+    parser.add_argument("--mobile-sam-box-pad", type=float, default=0.05)
+    parser.add_argument("--mobile-sam-score-weight", type=float, default=0.25)
     parser.add_argument("--proposal-classifier", type=Path, default=None)
     parser.add_argument("--proposal-classifier-threshold", type=float, default=None)
     parser.add_argument("--proposal-classifier-score-weight", type=float, default=0.50)
@@ -151,6 +162,39 @@ def tiled_detect(detector, image: np.ndarray, detector_conf: float, device, args
             boxes_out.append(boxes)
             scores_out.append(scores * float(args.tile_score_weight))
     return boxes_out, scores_out
+
+
+@torch.no_grad()
+def mobile_sam_fallback_masks(predictor, image, boxes, scores, args, device):
+    if predictor is None or not len(boxes):
+        return []
+    height, width = image.shape
+    padded = boxes.astype(np.float32).copy()
+    box_w = padded[:, 2] - padded[:, 0]
+    box_h = padded[:, 3] - padded[:, 1]
+    pad = float(args.mobile_sam_box_pad)
+    padded[:, 0] = np.maximum(0.0, padded[:, 0] - box_w * pad)
+    padded[:, 1] = np.maximum(0.0, padded[:, 1] - box_h * pad)
+    padded[:, 2] = np.minimum(float(width), padded[:, 2] + box_w * pad)
+    padded[:, 3] = np.minimum(float(height), padded[:, 3] + box_h * pad)
+    rgb = cv2.cvtColor(np.clip(image * 255.0, 0, 255).astype(np.uint8), cv2.COLOR_GRAY2RGB)
+    predictor.set_image(rgb)
+    transformed = predictor.transform.apply_boxes_torch(torch.as_tensor(padded, device=device), rgb.shape[:2])
+    masks, sam_scores, _ = predictor.predict_torch(
+        point_coords=None,
+        point_labels=None,
+        boxes=transformed,
+        multimask_output=False,
+    )
+    masks = masks[:, 0].detach().cpu().numpy().astype(np.uint8)
+    sam_scores = sam_scores[:, 0].detach().cpu().numpy()
+    fallback = []
+    for mask, detector_score, sam_score in zip(masks, scores, sam_scores):
+        if float(sam_score) < float(args.mobile_sam_iou_threshold) or int(mask.sum()) < args.min_area:
+            continue
+        score = float(detector_score) * float(sam_score) * float(args.mobile_sam_score_weight)
+        fallback.append((mask, score))
+    return fallback
 
 
 @torch.no_grad()
@@ -276,6 +320,14 @@ def main() -> None:
         shape_refiner = create_model_from_checkpoint(shape_checkpoint).to(device)
         shape_refiner.load_state_dict(shape_checkpoint["model"])
         shape_refiner.eval()
+    mobile_sam_predictor = None
+    if args.mobile_sam_fallback:
+        sys.path.insert(0, str(args.mobile_sam_root.resolve()))
+        from mobile_sam import SamPredictor, sam_model_registry
+
+        mobile_sam = sam_model_registry["vit_t"](checkpoint=str(args.mobile_sam_checkpoint)).to(device)
+        mobile_sam.eval()
+        mobile_sam_predictor = SamPredictor(mobile_sam)
     proposal_classifier = None
     proposal_classifier_image_size = 0
     proposal_classifier_pad = 0.0
@@ -365,6 +417,7 @@ def main() -> None:
             )
         else:
             pred_scored = refine_boxes(refiner, image, boxes, scores, device, args, image_size) if len(boxes) else []
+        pred_scored.extend(mobile_sam_fallback_masks(mobile_sam_predictor, image, boxes, scores, args, device))
         pred_instances = mask_nms(pred_scored, args.mask_nms_iou)
         pred_instances = make_masks_disjoint(pred_instances, args.min_area)
 
@@ -400,6 +453,10 @@ def main() -> None:
                     "refiner_tta": bool(args.refiner_tta),
                     "score_mode": args.score_mode,
                     "shape_weight": float(args.shape_weight) if shape_refiner is not None else 0.0,
+                    "mobile_sam_fallback": bool(args.mobile_sam_fallback),
+                    "mobile_sam_iou_threshold": (
+                        float(args.mobile_sam_iou_threshold) if args.mobile_sam_fallback else None
+                    ),
                     "pq": float(np.mean(pq_scores)) if pq_scores else 0.0,
                     "mean_dice_matched": float(np.mean(mean_dice_scores)) if mean_dice_scores else 0.0,
                     "tp": total_tp,
