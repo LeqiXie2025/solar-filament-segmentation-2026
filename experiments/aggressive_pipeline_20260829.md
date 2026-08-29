@@ -43,3 +43,9 @@ The larger models increase recall in some configurations but do not improve hone
 A dedicated 1024-pixel tiled detector was trained on 5494 crops containing 18356 boxes. Full-image plus tiled inference was implemented with border guards and independent confidence calibration. On a fixed 40-image time-split probe it did not add true positives over the full-image detector (PQ remained 0.5833), so tiled proposals are disabled in the production candidate rather than included speculatively.
 
 Clean-label selection found a small reproducible gain from refiner TTA at area 120: PQ 0.5631 to 0.5639 with unchanged TP/FP/FN. The resulting no-overlap test candidate is `submissions/submission_stable_cleanselected_tta_c018_t045_a120_20260829.csv`.
+
+## Proposal classifier and transformer refiner
+
+The next model-level branch trained a ResNet18 proposal classifier on 16448 detector crops (10605 positives and 5843 negatives). Its held-out F1 was 0.7740, but using it to rescue low-confidence YOLO boxes reduced the fixed 40-image PQ probe from 0.5833 to 0.5264. At a conservative setting it still reduced PQ to 0.5728. The classifier is therefore retained as an experimental component but disabled in production.
+
+A MiT-B3 transformer crop refiner was also trained with clean labels, noisy detector boxes, small-instance sampling, and boundary-aware loss. Its best crop Dice was 0.6306, below the production ResNet34 refiner at 0.6764. Fine-tuning the production refiner on the same harder proposal distribution reached only 0.6430. Both replacements were rejected, so no lower-quality leaderboard submission was generated.

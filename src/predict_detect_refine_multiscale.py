@@ -14,6 +14,7 @@ from src.masks import encode_binary_mask, postprocess_binary_mask
 from src.metrics import greedy_match, mean_dice_matched, panoptic_quality
 from src.model_factory import create_model_from_checkpoint
 from src.predict_detect_refine import make_masks_disjoint, mask_nms, patch_torchvision_nms, refine_boxes, time_val_names
+from src.proposal_classifier import classify_boxes, load_proposal_classifier
 from src.validation import load_gt_instances
 
 
@@ -30,6 +31,9 @@ def parse_args() -> argparse.Namespace:
         help="Per-detector confidence thresholds; defaults to --conf for every detector.",
     )
     parser.add_argument("--refiner", type=Path, required=True)
+    parser.add_argument("--proposal-classifier", type=Path, default=None)
+    parser.add_argument("--proposal-classifier-threshold", type=float, default=None)
+    parser.add_argument("--proposal-classifier-score-weight", type=float, default=0.50)
     parser.add_argument("--mode", choices=["val", "test"], default="val")
     parser.add_argument("--output", type=Path, default=config.SUBMISSION_DIR / "submission_detect_refine_multiscale.csv")
     parser.add_argument("--conf", type=float, default=0.14)
@@ -221,6 +225,20 @@ def main() -> None:
     refiner.load_state_dict(checkpoint["model"])
     refiner.eval()
     image_size = int(checkpoint.get("image_size", 512))
+    proposal_classifier = None
+    proposal_classifier_image_size = 0
+    proposal_classifier_pad = 0.0
+    proposal_classifier_threshold = 0.0
+    if args.proposal_classifier is not None:
+        proposal_checkpoint = torch.load(args.proposal_classifier, map_location="cpu")
+        proposal_classifier_threshold = float(
+            args.proposal_classifier_threshold
+            if args.proposal_classifier_threshold is not None
+            else proposal_checkpoint.get("threshold", 0.50)
+        )
+        proposal_classifier, proposal_classifier_image_size, proposal_classifier_pad = load_proposal_classifier(
+            args.proposal_classifier, device
+        )
 
     image_dir = args.data_dir / ("test_images" if args.mode == "test" else "train_images")
     files = sorted([p for p in image_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}])
@@ -267,6 +285,22 @@ def main() -> None:
 
         boxes = np.concatenate(all_boxes, axis=0) if all_boxes else np.empty((0, 4), dtype=np.float32)
         scores = np.concatenate(all_scores, axis=0) if all_scores else np.empty((0,), dtype=np.float32)
+        if proposal_classifier is not None and len(boxes):
+            classifier_scores = classify_boxes(
+                proposal_classifier,
+                image,
+                boxes,
+                device,
+                proposal_classifier_image_size,
+                proposal_classifier_pad,
+                args.batch_size,
+            )
+            keep = classifier_scores >= proposal_classifier_threshold
+            boxes = boxes[keep]
+            detector_scores = scores[keep]
+            classifier_scores = classifier_scores[keep]
+            weight = float(args.proposal_classifier_score_weight)
+            scores = detector_scores ** (1.0 - weight) * classifier_scores**weight
         if len(boxes) and args.refiner_tta:
             pred_scored = refine_boxes_tta(refiner, image, boxes, scores, device, args, image_size)
         else:
@@ -300,6 +334,9 @@ def main() -> None:
                     "mask_nms_iou": args.mask_nms_iou,
                     "imgsz": " ".join(str(x) for x in args.imgsz),
                     "tile_size": int(args.tile_size),
+                    "proposal_classifier_threshold": (
+                        proposal_classifier_threshold if proposal_classifier is not None else None
+                    ),
                     "refiner_tta": bool(args.refiner_tta),
                     "score_mode": args.score_mode,
                     "pq": float(np.mean(pq_scores)) if pq_scores else 0.0,

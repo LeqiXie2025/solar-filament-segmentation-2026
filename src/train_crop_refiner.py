@@ -39,6 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--arch", choices=["smp_unet", "smp_unetplusplus", "smp_deeplabv3plus"], default="smp_unet")
     parser.add_argument("--loss", choices=["dice_bce", "tversky", "focal_tversky", "dice_focal", "boundary_dice_focal"], default="dice_bce")
     parser.add_argument("--output", type=Path, default=config.MODEL_DIR / "crop_refiner_resnet34_512.pth")
+    parser.add_argument("--init-checkpoint", type=Path, default=None)
     parser.add_argument("--patience", type=int, default=2)
     parser.add_argument("--proposal-json", type=Path, default=None)
     parser.add_argument("--positive-proposal-weight", type=float, default=1.0)
@@ -187,6 +188,9 @@ def main() -> None:
         encoder_name=args.encoder_name,
         encoder_weights=args.encoder_weights,
     ).to(device)
+    if args.init_checkpoint is not None:
+        initial = torch.load(args.init_checkpoint, map_location=device)
+        model.load_state_dict(initial["model"])
     criterion = build_loss(args.loss)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=config.WEIGHT_DECAY)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
