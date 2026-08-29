@@ -14,6 +14,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="0")
     parser.add_argument("--project", type=Path, default=config.PROJECT_ROOT / "models" / "yolo")
     parser.add_argument("--name", default="yolo11s_seg_1280")
+    parser.add_argument("--patience", type=int, default=12)
+    parser.add_argument("--workers", type=int, default=0)
+    parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--lr0", type=float, default=2e-4)
+    parser.add_argument("--copy-paste", type=float, default=0.15)
+    parser.add_argument("--close-mosaic", type=int, default=10)
     return parser.parse_args()
 
 
@@ -41,15 +47,16 @@ def main() -> None:
         device=args.device,
         project=str(args.project),
         name=args.name,
-        patience=8,
-        workers=0,
+        patience=args.patience,
+        workers=args.workers,
         exist_ok=True,
         pretrained=True,
-        amp=False,
+        amp=args.amp,
         optimizer="AdamW",
-        lr0=2e-4,
+        lr0=args.lr0,
         cos_lr=True,
-        close_mosaic=5,
+        close_mosaic=args.close_mosaic,
+        copy_paste=args.copy_paste,
         max_det=120,
     )
 

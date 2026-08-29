@@ -1,0 +1,40 @@
+# Aggressive pipeline experiment (2026-08-29)
+
+## Scope
+
+This experiment tested three model-level changes without using leaderboard labels:
+
+1. Canonical multi-annotator label deduplication using mask-IoU clustering and a medoid mask.
+2. A high-resolution YOLO11m detection/segmentation branch for improved small-filament recall.
+3. A U-Net++ EfficientNet-B4 crop refiner with boundary-aware loss and size-aware sampling.
+
+The validation set remains the final time-based 20% split. Model selection uses instance-level PQ, with matched Dice and TP/FP/FN reported separately.
+
+## Label audit
+
+- Raw image records: 1154
+- Unique images: 707
+- Raw annotations: 8199
+- Canonical instances: 6356
+- Duplicate clusters merged: 1435
+- Images with multiple annotation records: 296
+- Instances smaller than 500 pixels: 1091
+
+Canonical annotations: `data/clean/train_annotations_medoid.json`.
+
+## Results
+
+| Pipeline | PQ | Matched Dice | TP | FP | FN |
+|---|---:|---:|---:|---:|---:|
+| YOLO11s boxes + ResNet34 refiner | **0.5631** | **0.7279** | 447 | 106 | 78 |
+| YOLO11m boxes + ResNet34 refiner, conf 0.14 | 0.5404 | 0.7162 | 466 | 164 | 59 |
+| YOLO11m boxes + ResNet34 refiner, conf 0.22 | 0.5424 | 0.7260 | 433 | 83 | 92 |
+| YOLO11s/YOLO11m box ensemble | 0.5560 | 0.7238 | 460 | 127 | 65 |
+| YOLO11m-seg standalone, conf 0.10 | 0.4945 | 0.6815 | 419 | 83 | 106 |
+| YOLO11m-seg + detect/refine | 0.5597 | 0.7271 | 450 | 113 | 75 |
+| YOLO11s boxes + U-Net++ EfficientNet-B4 refiner | 0.5506 | 0.7129 | 447 | 106 | 78 |
+
+## Decision
+
+The larger models increase recall in some configurations but do not improve honest time-split PQ. The production submission therefore remains the YOLO11s detector plus ResNet34 crop refiner with multiscale inference, refiner TTA, mask NMS, and final disjoint-mask enforcement. The YOLO11m models remain optional diversity branches for future stacking, not default submission models.
+

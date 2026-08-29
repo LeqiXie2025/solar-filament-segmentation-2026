@@ -20,7 +20,15 @@ from src.validation import load_gt_instances
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
-    parser.add_argument("--detector", type=Path, required=True)
+    parser.add_argument("--annotation-path", type=Path, default=None)
+    parser.add_argument("--detector", type=Path, nargs="+", required=True)
+    parser.add_argument(
+        "--detector-conf",
+        type=float,
+        nargs="+",
+        default=None,
+        help="Per-detector confidence thresholds; defaults to --conf for every detector.",
+    )
     parser.add_argument("--refiner", type=Path, required=True)
     parser.add_argument("--mode", choices=["val", "test"], default="val")
     parser.add_argument("--output", type=Path, default=config.SUBMISSION_DIR / "submission_detect_refine_multiscale.csv")
@@ -126,7 +134,12 @@ def main() -> None:
     from ultralytics import YOLO
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    detector = YOLO(str(args.detector))
+    detectors = [YOLO(str(path)) for path in args.detector]
+    detector_confs = args.detector_conf or [args.conf] * len(detectors)
+    if len(detector_confs) == 1 and len(detectors) > 1:
+        detector_confs *= len(detectors)
+    if len(detector_confs) != len(detectors):
+        raise ValueError("--detector-conf must contain one value or one value per --detector")
     checkpoint = torch.load(args.refiner, map_location=device)
     refiner = create_model_from_checkpoint(checkpoint).to(device)
     refiner.load_state_dict(checkpoint["model"])
@@ -135,8 +148,9 @@ def main() -> None:
 
     image_dir = args.data_dir / ("test_images" if args.mode == "test" else "train_images")
     files = sorted([p for p in image_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}])
+    annotation_path = args.annotation_path or (args.data_dir / "train_annotations.json")
     if args.mode == "val":
-        names = set(time_val_names(args.data_dir / "train_annotations.json", {p.name for p in files}))
+        names = set(time_val_names(annotation_path, {p.name for p in files}))
         files = [p for p in files if p.name in names]
     if args.limit:
         files = files[: args.limit]
@@ -145,25 +159,26 @@ def main() -> None:
     pq_scores = []
     mean_dice_scores = []
     total_tp = total_fp = total_fn = 0
-    gt_by_file = load_gt_instances(args.data_dir / "train_annotations.json", {p.name for p in files}) if args.mode == "val" else {}
+    gt_by_file = load_gt_instances(annotation_path, {p.name for p in files}) if args.mode == "val" else {}
 
     for path in tqdm(files, desc=f"detect-refine-multiscale-{args.mode}"):
         image = read_gray_image(path)
         all_boxes = []
         all_scores = []
-        for size in args.imgsz:
-            det = detector.predict(
-                source=str(path),
-                imgsz=int(size),
-                conf=args.conf,
-                iou=args.iou,
-                device=0 if device.type == "cuda" else "cpu",
-                verbose=False,
-            )[0]
-            if det.boxes is None:
-                continue
-            all_boxes.append(det.boxes.xyxy.detach().cpu().numpy())
-            all_scores.append(det.boxes.conf.detach().cpu().numpy())
+        for detector, detector_conf in zip(detectors, detector_confs):
+            for size in args.imgsz:
+                det = detector.predict(
+                    source=str(path),
+                    imgsz=int(size),
+                    conf=float(detector_conf),
+                    iou=args.iou,
+                    device=0 if device.type == "cuda" else "cpu",
+                    verbose=False,
+                )[0]
+                if det.boxes is None:
+                    continue
+                all_boxes.append(det.boxes.xyxy.detach().cpu().numpy())
+                all_scores.append(det.boxes.conf.detach().cpu().numpy())
 
         boxes = np.concatenate(all_boxes, axis=0) if all_boxes else np.empty((0, 4), dtype=np.float32)
         scores = np.concatenate(all_scores, axis=0) if all_scores else np.empty((0,), dtype=np.float32)

@@ -12,6 +12,7 @@ from src.crop_refiner_utils import load_instance_records
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    parser.add_argument("--annotation-path", type=Path, default=None)
     parser.add_argument("--detector", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=config.DATA_DIR / "detector_proposals.json")
     parser.add_argument("--conf", type=float, default=0.05)
@@ -65,7 +66,8 @@ def main() -> None:
 
     train_dir = args.data_dir / "train_images"
     existing_files = {p.name for p in train_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}}
-    _, records = load_instance_records(args.data_dir / "train_annotations.json", existing_files)
+    annotation_path = args.annotation_path or (args.data_dir / "train_annotations.json")
+    _, records = load_instance_records(annotation_path, existing_files)
     records_by_file: dict[str, list[dict]] = {}
     for record in records:
         records_by_file.setdefault(record["file_name"], []).append(record)

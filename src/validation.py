@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections import defaultdict
 from pathlib import Path
 
@@ -9,39 +8,27 @@ import torch
 from tqdm import tqdm
 
 from src.dataset import read_gray_image
-from src.masks import (
-    _decode_coco_rle,
-    _decode_polygon,
-    postprocess_binary_mask,
-    split_instances,
-)
+from src.gt_dedup import image_masks_from_anns, load_anns_by_file
+from src.masks import postprocess_binary_mask, split_instances
 from src.metrics import full_image_dice, greedy_match, mean_dice_matched, panoptic_quality
 from src.predict import sliding_window_predict
 from src.preprocessing import detect_solar_disk
 
 
 def load_gt_instances(annotation_path: Path, target_file_names: set[str]) -> dict[str, list[np.ndarray]]:
-    with open(annotation_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    raw_info = {img["id"]: img for img in data["images"]}
+    image_info, anns_by_file = load_anns_by_file(annotation_path)
+    info_by_file = {}
+    for info in image_info.values():
+        if info["file_name"] in target_file_names:
+            info_by_file.setdefault(info["file_name"], info)
     instances_by_file: dict[str, list[np.ndarray]] = defaultdict(list)
-    for ann in data.get("annotations", []):
-        info = raw_info[ann["image_id"]]
-        if info["file_name"] not in target_file_names:
-            continue
-
-        height, width = int(info["height"]), int(info["width"])
-        segmentation = ann.get("segmentation")
-        if isinstance(segmentation, list):
-            mask = _decode_polygon(segmentation, height, width)
-        elif isinstance(segmentation, dict):
-            mask = _decode_coco_rle(segmentation, height, width)
-        else:
-            continue
-
-        if int(mask.sum()) > 0:
-            instances_by_file[info["file_name"]].append(mask.astype(np.uint8))
+    for file_name, info in info_by_file.items():
+        instances_by_file[file_name] = image_masks_from_anns(
+            anns_by_file.get(file_name, []),
+            int(info["height"]),
+            int(info["width"]),
+            iou_thresh=0.5,
+        )
     return instances_by_file
 
 

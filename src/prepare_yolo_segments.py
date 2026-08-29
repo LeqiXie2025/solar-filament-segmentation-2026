@@ -13,6 +13,7 @@ from src.gt_dedup import image_masks_from_anns, load_anns_by_file
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    parser.add_argument("--annotation-path", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, default=config.PROJECT_ROOT / "data" / "yolo_segments")
     parser.add_argument("--val-fraction", type=float, default=config.VAL_FRACTION)
     parser.add_argument("--split", choices=["time", "random"], default="time")
@@ -62,7 +63,8 @@ def masks_to_yolo_segments(masks: list[np.ndarray], width: int, height: int, min
 def main() -> None:
     args = parse_args()
     train_dir = args.data_dir / "train_images"
-    image_info, anns_by_file = load_anns_by_file(args.data_dir / "train_annotations.json")
+    annotation_path = args.annotation_path or (args.data_dir / "train_annotations.json")
+    image_info, anns_by_file = load_anns_by_file(annotation_path)
     existing_files = {p.name for p in train_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}}
 
     dedup_info = {}

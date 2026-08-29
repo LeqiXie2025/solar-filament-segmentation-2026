@@ -14,11 +14,13 @@ from src.metrics import greedy_match, mean_dice_matched, panoptic_quality
 from src.model_factory import create_model_from_checkpoint
 from src.predict_detect_refine import make_masks_disjoint, mask_nms, patch_torchvision_nms, refine_boxes, time_val_names
 from src.validation import load_gt_instances
+from src.yolo_seg_inference import predict_yolo_seg_multiscale
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    parser.add_argument("--annotation-path", type=Path, default=None)
     parser.add_argument("--box-detector", type=Path, required=True)
     parser.add_argument("--refiner", type=Path, required=True)
     parser.add_argument("--seg-model", type=Path, required=True)
@@ -31,9 +33,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--threshold", type=float, default=0.45)
     parser.add_argument("--seg-conf", type=float, default=0.20)
     parser.add_argument("--seg-iou", type=float, default=0.0)
-    parser.add_argument("--seg-imgsz", type=int, default=1024)
+    parser.add_argument("--seg-imgsz", type=int, nargs="+", default=[1536])
+    parser.add_argument("--seg-tile-size", type=int, default=0)
+    parser.add_argument("--seg-tile-overlap", type=float, default=0.25)
     parser.add_argument("--seg-threshold", type=float, default=0.50)
     parser.add_argument("--seg-score-weight", type=float, default=0.65)
+    parser.add_argument("--refine-seg-boxes", action="store_true")
+    parser.add_argument("--seg-refine-agreement", type=float, default=0.0)
     parser.add_argument("--min-area", type=int, default=160)
     parser.add_argument("--mask-nms-iou", type=float, default=0.12)
     parser.add_argument("--batch-size", type=int, default=16)
@@ -73,13 +79,14 @@ def main() -> None:
 
     image_dir = args.data_dir / ("test_images" if args.mode == "test" else "train_images")
     files = sorted([p for p in image_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}])
+    annotation_path = args.annotation_path or (args.data_dir / "train_annotations.json")
     if args.mode == "val":
-        names = set(time_val_names(args.data_dir / "train_annotations.json", {p.name for p in files}))
+        names = set(time_val_names(annotation_path, {p.name for p in files}))
         files = [p for p in files if p.name in names]
     if args.limit:
         files = files[: args.limit]
 
-    gt_by_file = load_gt_instances(args.data_dir / "train_annotations.json", {p.name for p in files}) if args.mode == "val" else {}
+    gt_by_file = load_gt_instances(annotation_path, {p.name for p in files}) if args.mode == "val" else {}
     rows = []
     pq_scores = []
     mean_dice_scores = []
@@ -106,20 +113,60 @@ def main() -> None:
         scores = np.concatenate(all_scores, axis=0) if all_scores else np.empty((0,), dtype=np.float32)
         scored = refine_boxes(refiner, image, boxes, scores, device, args, image_size) if len(boxes) else []
 
-        seg_result = seg_model.predict(
-            source=str(path),
-            imgsz=args.seg_imgsz,
-            conf=args.seg_conf,
-            iou=args.seg_iou,
-            max_det=120,
-            device=yolo_device,
-            verbose=False,
-        )[0]
-        scored.extend(
-            (m, s)
-            for m, s in yolo_seg_instances(seg_result, height, width, args.seg_threshold, args.seg_score_weight)
-            if int(m.sum()) >= args.min_area
+        seg_candidates = predict_yolo_seg_multiscale(
+            seg_model,
+            path,
+            image,
+            yolo_device,
+            args.seg_imgsz,
+            args.seg_conf,
+            args.seg_iou,
+            120,
+            args.seg_threshold,
+            args.seg_tile_size,
+            args.seg_tile_overlap,
         )
+        if args.refine_seg_boxes and seg_candidates:
+            seg_boxes = []
+            seg_scores = []
+            for mask, score in seg_candidates:
+                ys, xs = np.where(mask > 0)
+                if len(xs) == 0:
+                    continue
+                seg_boxes.append([xs.min(), ys.min(), xs.max() + 1, ys.max() + 1])
+                seg_scores.append(float(score) * args.seg_score_weight)
+            if seg_boxes:
+                refined_seg = refine_boxes(
+                    refiner,
+                    image,
+                    np.asarray(seg_boxes, dtype=np.float32),
+                    np.asarray(seg_scores, dtype=np.float32),
+                    device,
+                    args,
+                    image_size,
+                )
+                if args.seg_refine_agreement > 0:
+                    raw_masks = [mask.astype(bool) for mask, _ in seg_candidates]
+                    for refined_mask, score in refined_seg:
+                        refined_bool = refined_mask.astype(bool)
+                        refined_area = int(refined_bool.sum())
+                        best_iou = 0.0
+                        for raw_mask in raw_masks:
+                            inter = int(np.logical_and(refined_bool, raw_mask).sum())
+                            if inter == 0:
+                                continue
+                            union = refined_area + int(raw_mask.sum()) - inter
+                            best_iou = max(best_iou, inter / max(union, 1))
+                        if best_iou >= args.seg_refine_agreement:
+                            scored.append((refined_mask, float(score) * best_iou))
+                else:
+                    scored.extend(refined_seg)
+        else:
+            scored.extend(
+                (mask, score * args.seg_score_weight)
+                for mask, score in seg_candidates
+                if int(mask.sum()) >= args.min_area
+            )
         pred_instances = mask_nms(scored, args.mask_nms_iou)
         pred_instances = make_masks_disjoint(pred_instances, args.min_area)
 

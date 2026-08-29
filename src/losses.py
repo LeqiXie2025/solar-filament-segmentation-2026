@@ -86,6 +86,28 @@ class DiceFocalLoss(nn.Module):
         return self.focal_weight * focal + (1.0 - self.focal_weight) * dice_loss
 
 
+class BoundaryDiceFocalLoss(nn.Module):
+    """Dice/focal region loss plus a differentiable thin-boundary objective."""
+
+    def __init__(self, boundary_weight: float = 0.2) -> None:
+        super().__init__()
+        self.region = DiceFocalLoss(focal_weight=0.45, gamma=2.0)
+        self.boundary_weight = boundary_weight
+
+    @staticmethod
+    def boundary_map(values: torch.Tensor) -> torch.Tensor:
+        dilated = F.max_pool2d(values, kernel_size=3, stride=1, padding=1)
+        eroded = -F.max_pool2d(-values, kernel_size=3, stride=1, padding=1)
+        return (dilated - eroded).clamp(0.0, 1.0)
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        region_loss = self.region(logits, targets)
+        pred_boundary = self.boundary_map(torch.sigmoid(logits))
+        target_boundary = self.boundary_map(targets)
+        boundary_loss = F.l1_loss(pred_boundary, target_boundary)
+        return region_loss + self.boundary_weight * boundary_loss
+
+
 def build_loss(name: str) -> nn.Module:
     if name == "dice_bce":
         return DiceBCELoss()
@@ -95,4 +117,6 @@ def build_loss(name: str) -> nn.Module:
         return FocalTverskyLoss(alpha=0.3, beta=0.7, gamma=1.33)
     if name == "dice_focal":
         return DiceFocalLoss(focal_weight=0.45, gamma=2.0)
+    if name == "boundary_dice_focal":
+        return BoundaryDiceFocalLoss(boundary_weight=0.2)
     raise ValueError(f"Unknown loss: {name}")

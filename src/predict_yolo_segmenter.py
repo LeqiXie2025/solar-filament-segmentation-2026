@@ -13,15 +13,17 @@ from src.masks import encode_binary_mask
 from src.metrics import greedy_match, mean_dice_matched, panoptic_quality
 from src.predict_detect_refine import make_masks_disjoint, mask_nms, patch_torchvision_nms, time_val_names
 from src.validation import load_gt_instances
+from src.yolo_seg_inference import predict_yolo_seg_multiscale
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    parser.add_argument("--annotation-path", type=Path, default=None)
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--mode", choices=["val", "test"], default="val")
     parser.add_argument("--output", type=Path, default=config.SUBMISSION_DIR / "submission_yolo_seg.csv")
-    parser.add_argument("--imgsz", type=int, default=2048)
+    parser.add_argument("--imgsz", type=int, nargs="+", default=[1536])
     parser.add_argument("--conf", type=float, default=0.25)
     parser.add_argument("--iou", type=float, default=0.0)
     parser.add_argument("--max-det", type=int, default=120)
@@ -29,6 +31,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-area", type=int, default=5)
     parser.add_argument("--mask-nms-iou", type=float, default=0.0)
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--tile-size", type=int, default=0)
+    parser.add_argument("--tile-overlap", type=float, default=0.25)
     return parser.parse_args()
 
 
@@ -55,13 +59,14 @@ def main() -> None:
     model = YOLO(str(args.model))
     image_dir = args.data_dir / ("test_images" if args.mode == "test" else "train_images")
     files = sorted([p for p in image_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}])
+    annotation_path = args.annotation_path or (args.data_dir / "train_annotations.json")
     if args.mode == "val":
-        names = set(time_val_names(args.data_dir / "train_annotations.json", {p.name for p in files}))
+        names = set(time_val_names(annotation_path, {p.name for p in files}))
         files = [p for p in files if p.name in names]
     if args.limit:
         files = files[: args.limit]
 
-    gt_by_file = load_gt_instances(args.data_dir / "train_annotations.json", {p.name for p in files}) if args.mode == "val" else {}
+    gt_by_file = load_gt_instances(annotation_path, {p.name for p in files}) if args.mode == "val" else {}
     rows = []
     pq_scores = []
     mean_dice_scores = []
@@ -70,16 +75,23 @@ def main() -> None:
     for path in tqdm(files, desc=f"yolo-seg-{args.mode}"):
         image = read_gray_image(path)
         height, width = image.shape
-        result = model.predict(
-            source=str(path),
-            imgsz=args.imgsz,
-            conf=args.conf,
-            iou=args.iou,
-            max_det=args.max_det,
-            device=device,
-            verbose=False,
-        )[0]
-        scored = [(m, s) for m, s in result_masks(result, height, width, args.threshold) if int(m.sum()) >= args.min_area]
+        scored = [
+            (m, s)
+            for m, s in predict_yolo_seg_multiscale(
+                model,
+                path,
+                image,
+                device,
+                args.imgsz,
+                args.conf,
+                args.iou,
+                args.max_det,
+                args.threshold,
+                args.tile_size,
+                args.tile_overlap,
+            )
+            if int(m.sum()) >= args.min_area
+        ]
         pred_instances = mask_nms(scored, args.mask_nms_iou)
         pred_instances = make_masks_disjoint(pred_instances, args.min_area)
 
@@ -108,7 +120,7 @@ def main() -> None:
                     "threshold": args.threshold,
                     "min_area": args.min_area,
                     "mask_nms_iou": args.mask_nms_iou,
-                    "imgsz": args.imgsz,
+                    "imgsz": " ".join(str(v) for v in args.imgsz),
                     "pq": float(np.mean(pq_scores)) if pq_scores else 0.0,
                     "mean_dice_matched": float(np.mean(mean_dice_scores)) if mean_dice_scores else 0.0,
                     "tp": total_tp,

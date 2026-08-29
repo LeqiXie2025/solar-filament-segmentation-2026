@@ -27,6 +27,7 @@ from src.model_factory import create_model
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    parser.add_argument("--annotation-path", type=Path, default=None)
     parser.add_argument("--image-size", type=int, default=512)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--epochs", type=int, default=8)
@@ -35,11 +36,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=config.SEED)
     parser.add_argument("--encoder-name", default="resnet34")
     parser.add_argument("--encoder-weights", default="imagenet")
-    parser.add_argument("--loss", choices=["dice_bce", "tversky", "focal_tversky", "dice_focal"], default="dice_bce")
+    parser.add_argument("--arch", choices=["smp_unet", "smp_unetplusplus", "smp_deeplabv3plus"], default="smp_unet")
+    parser.add_argument("--loss", choices=["dice_bce", "tversky", "focal_tversky", "dice_focal", "boundary_dice_focal"], default="dice_bce")
     parser.add_argument("--output", type=Path, default=config.MODEL_DIR / "crop_refiner_resnet34_512.pth")
     parser.add_argument("--patience", type=int, default=2)
     parser.add_argument("--proposal-json", type=Path, default=None)
     parser.add_argument("--positive-proposal-weight", type=float, default=1.0)
+    parser.add_argument("--small-instance-power", type=float, default=0.5)
     return parser.parse_args()
 
 
@@ -70,12 +73,24 @@ class RefinerDataset(Dataset):
         image_size: int,
         augment: bool,
         samples_per_epoch: int | None = None,
+        small_instance_power: float = 0.0,
     ) -> None:
         self.records = list(records)
         self.image_dir = Path(image_dir)
         self.image_size = int(image_size)
         self.augment = augment
         self.samples_per_epoch = samples_per_epoch
+        positive_areas = [float(record.get("area", 0.0)) for record in self.records if float(record.get("area", 0.0)) > 0]
+        reference_area = float(np.median(positive_areas)) if positive_areas else 1.0
+        weights = []
+        for record in self.records:
+            area = float(record.get("area", 0.0))
+            if area > 0:
+                weights.append(area ** -float(small_instance_power))
+            else:
+                weights.append(0.25 * reference_area ** -float(small_instance_power))
+        weights = np.asarray(weights, dtype=np.float64)
+        self.sample_probabilities = weights / weights.sum()
 
     def __len__(self) -> int:
         return self.samples_per_epoch or len(self.records)
@@ -83,7 +98,7 @@ class RefinerDataset(Dataset):
     def __getitem__(self, idx: int):
         record = self.records[idx % len(self.records)]
         if self.augment:
-            record = random.choice(self.records)
+            record = self.records[int(np.random.choice(len(self.records), p=self.sample_probabilities))]
         image = read_gray_image(self.image_dir / record["file_name"])
         mask = decode_record_mask(record)
         source_bbox = record.get("proposal_bbox", record["bbox"])
@@ -98,6 +113,15 @@ class RefinerDataset(Dataset):
             image_crop = image_crop[:, ::-1]
             mask_crop = mask_crop[:, ::-1]
             seed = seed[:, ::-1]
+        if self.augment and random.random() < 0.5:
+            image_crop = image_crop[::-1, :]
+            mask_crop = mask_crop[::-1, :]
+            seed = seed[::-1, :]
+        if self.augment and random.random() < 0.5:
+            k = random.randint(1, 3)
+            image_crop = np.rot90(image_crop, k)
+            mask_crop = np.rot90(mask_crop, k)
+            seed = np.rot90(seed, k)
         if self.augment and random.random() < 0.35:
             image_crop = np.clip(image_crop * random.uniform(0.85, 1.18) + random.uniform(-0.04, 0.04), 0.0, 1.0)
 
@@ -126,7 +150,7 @@ def main() -> None:
     args = parse_args()
     seed_everything(args.seed)
     train_dir = args.data_dir / "train_images"
-    annotation_path = args.data_dir / "train_annotations.json"
+    annotation_path = args.annotation_path or (args.data_dir / "train_annotations.json")
     existing_files = {p.name for p in train_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}}
     _, records = load_instance_records(annotation_path, existing_files)
     if args.proposal_json is not None:
@@ -144,14 +168,21 @@ def main() -> None:
     val_records = [r for r in records if r["file_name"] in val_files]
     print(f"crop_refiner train_instances={len(train_records)} val_instances={len(val_records)}")
 
-    train_ds = RefinerDataset(train_records, train_dir, args.image_size, augment=True, samples_per_epoch=args.samples_per_epoch)
+    train_ds = RefinerDataset(
+        train_records,
+        train_dir,
+        args.image_size,
+        augment=True,
+        samples_per_epoch=args.samples_per_epoch,
+        small_instance_power=args.small_instance_power,
+    )
     val_ds = RefinerDataset(val_records, train_dir, args.image_size, augment=False)
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=0, pin_memory=torch.cuda.is_available())
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=0, pin_memory=torch.cuda.is_available())
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = create_model(
-        arch="smp_unet",
+        arch=args.arch,
         in_channels=3,
         encoder_name=args.encoder_name,
         encoder_weights=args.encoder_weights,
@@ -187,7 +218,7 @@ def main() -> None:
             torch.save(
                 {
                     "model": model.state_dict(),
-                    "arch": "smp_unet",
+                    "arch": args.arch,
                     "encoder_name": args.encoder_name,
                     "encoder_weights": None,
                     "in_channels": 3,

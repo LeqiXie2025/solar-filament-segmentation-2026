@@ -4,13 +4,13 @@ import shutil
 from pathlib import Path
 
 import config
-from src.dataset import merge_duplicate_file_records, sorted_time_split
-from src.masks import load_coco_binary_masks
+from src.dataset import sorted_time_split
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    parser.add_argument("--annotation-path", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, default=config.PROJECT_ROOT / "data" / "yolo_boxes")
     parser.add_argument("--val-fraction", type=float, default=config.VAL_FRACTION)
     parser.add_argument("--copy-images", action="store_true")
@@ -33,13 +33,17 @@ def link_or_copy(src: Path, dst: Path, copy_images: bool) -> None:
 def main() -> None:
     args = parse_args()
     train_dir = args.data_dir / "train_images"
-    annotation_path = args.data_dir / "train_annotations.json"
+    annotation_path = args.annotation_path or (args.data_dir / "train_annotations.json")
     with open(annotation_path, "r", encoding="utf-8") as f:
         coco = json.load(f)
 
     image_info_raw = {img["id"]: img for img in coco["images"]}
-    image_info, masks_by_image = load_coco_binary_masks(annotation_path)
-    image_info, _ = merge_duplicate_file_records(image_info, masks_by_image)
+    image_info = {}
+    seen_files = set()
+    for image_id, info in image_info_raw.items():
+        if info["file_name"] not in seen_files:
+            image_info[image_id] = info
+            seen_files.add(info["file_name"])
     existing_files = {p.name for p in train_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}}
     image_info = {image_id: info for image_id, info in image_info.items() if info["file_name"] in existing_files}
     train_ids, val_ids = sorted_time_split(image_info, args.val_fraction)
