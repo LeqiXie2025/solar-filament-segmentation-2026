@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import json
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +10,7 @@ from tqdm import tqdm
 
 from src.dataset import read_gray_image
 from src.gt_dedup import image_masks_from_anns, load_anns_by_file
+from src.gt_dedup import _decode_segmentation
 from src.masks import postprocess_binary_mask, split_instances
 from src.metrics import full_image_dice, greedy_match, mean_dice_matched, panoptic_quality
 from src.predict import sliding_window_predict
@@ -30,6 +32,34 @@ def load_gt_instances(annotation_path: Path, target_file_names: set[str]) -> dic
             iou_thresh=0.5,
         )
     return instances_by_file
+
+
+def load_gt_instances_by_annotator(
+    annotation_path: Path,
+    target_file_names: set[str],
+) -> dict[str, list[list[np.ndarray]]]:
+    """Load one GT instance set per original image/annotator record.
+
+    This mirrors the official notebook, which scores every annotator-image
+    record separately while reusing the same prediction for its physical file.
+    """
+    data = json.loads(Path(annotation_path).read_text(encoding="utf-8"))
+    image_by_id = {info["id"]: info for info in data["images"]}
+    anns_by_image: dict[object, list[dict]] = defaultdict(list)
+    for ann in data.get("annotations", []):
+        anns_by_image[ann["image_id"]].append(ann)
+    grouped: dict[str, list[list[np.ndarray]]] = defaultdict(list)
+    for image_id, info in image_by_id.items():
+        file_name = str(info["file_name"])
+        if file_name not in target_file_names:
+            continue
+        masks = []
+        for ann in anns_by_image.get(image_id, []):
+            mask = _decode_segmentation(ann.get("segmentation"), int(info["height"]), int(info["width"]))
+            if int(mask.sum()) > 0:
+                masks.append(mask.astype(np.uint8))
+        grouped[file_name].append(masks)
+    return grouped
 
 
 @torch.no_grad()

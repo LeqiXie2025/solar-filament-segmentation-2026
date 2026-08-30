@@ -106,3 +106,33 @@ def panoptic_quality(
     overlap_sum = sum(ov for _, _, ov in matched)
     denom = len(matched) + 0.5 * fp + 0.5 * fn
     return float(overlap_sum / max(denom, 1e-6))
+
+
+def official_pq_counts(
+    preds: list[np.ndarray],
+    gts: list[np.ndarray],
+    iou_threshold: float = 0.5,
+) -> tuple[float, int, int, int]:
+    """Return the exact count terms used by the organizer's evaluation notebook.
+
+    The organizer treats every pair with IoU > 0.5 as a hit, then counts a
+    prediction/GT as unmatched only when its hit-matrix column/row is empty.
+    Submission masks are required to be disjoint, so qualifying many-to-many
+    matches are rare and no additional greedy assignment is applied.
+    """
+    n_pred, n_gt = len(preds), len(gts)
+    if n_gt == 0:
+        return 0.0, 0, n_pred, 0
+    if n_pred == 0:
+        return 0.0, 0, 0, n_gt
+    matrix = overlap_matrix(preds, gts, mode="iou")
+    hits = matrix > float(iou_threshold)
+    tp = int(hits.sum())
+    fp = int((hits.sum(axis=1) == 0).sum())
+    fn = int((hits.sum(axis=0) == 0).sum())
+    return float(matrix[hits].sum()), tp, fp, fn
+
+
+def official_pq(iou_sum: float, tp: int, fp: int, fn: int) -> float:
+    denominator = int(tp) + 0.5 * int(fp) + 0.5 * int(fn)
+    return float(iou_sum / denominator) if denominator > 0 else 0.0

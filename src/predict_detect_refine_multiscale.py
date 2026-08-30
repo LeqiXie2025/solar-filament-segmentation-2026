@@ -12,11 +12,11 @@ import config
 from src.crop_refiner_utils import crop_bounds_from_bbox, crop_with_padding, make_refiner_channels, seed_from_bbox
 from src.dataset import read_gray_image
 from src.masks import encode_binary_mask, postprocess_binary_mask
-from src.metrics import greedy_match, mean_dice_matched, panoptic_quality
+from src.metrics import greedy_match, mean_dice_matched, official_pq, official_pq_counts, panoptic_quality
 from src.model_factory import create_model_from_checkpoint
 from src.predict_detect_refine import make_masks_disjoint, mask_nms, patch_torchvision_nms, refine_boxes, time_val_names
 from src.proposal_classifier import classify_boxes, load_proposal_classifier
-from src.validation import load_gt_instances
+from src.validation import load_gt_instances, load_gt_instances_by_annotator
 
 
 def parse_args() -> argparse.Namespace:
@@ -77,6 +77,7 @@ def parse_args() -> argparse.Namespace:
         default="detector",
     )
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--official-metric", action="store_true")
     return parser.parse_args()
 
 
@@ -356,7 +357,13 @@ def main() -> None:
     pq_scores = []
     mean_dice_scores = []
     total_tp = total_fp = total_fn = 0
-    gt_by_file = load_gt_instances(annotation_path, {p.name for p in files}) if args.mode == "val" else {}
+    official_iou_sum = 0.0
+    if args.mode == "val" and args.official_metric:
+        gt_by_file = load_gt_instances_by_annotator(annotation_path, {p.name for p in files})
+    elif args.mode == "val":
+        gt_by_file = load_gt_instances(annotation_path, {p.name for p in files})
+    else:
+        gt_by_file = {}
 
     for path in tqdm(files, desc=f"detect-refine-multiscale-{args.mode}"):
         image = read_gray_image(path)
@@ -422,13 +429,21 @@ def main() -> None:
         pred_instances = make_masks_disjoint(pred_instances, args.min_area)
 
         if args.mode == "val":
-            gts = gt_by_file.get(path.name, [])
-            matched, fp, fn = greedy_match(pred_instances, gts, overlap_threshold=0.0, mode="dice")
-            pq_scores.append(panoptic_quality(matched, len(pred_instances), len(gts), fp, fn))
-            mean_dice_scores.append(mean_dice_matched(matched))
-            total_tp += len(matched)
-            total_fp += fp
-            total_fn += fn
+            if args.official_metric:
+                for gts in gt_by_file.get(path.name, []):
+                    iou_sum, tp, fp, fn = official_pq_counts(pred_instances, gts)
+                    official_iou_sum += iou_sum
+                    total_tp += tp
+                    total_fp += fp
+                    total_fn += fn
+            else:
+                gts = gt_by_file.get(path.name, [])
+                matched, fp, fn = greedy_match(pred_instances, gts, overlap_threshold=0.0, mode="dice")
+                pq_scores.append(panoptic_quality(matched, len(pred_instances), len(gts), fp, fn))
+                mean_dice_scores.append(mean_dice_matched(matched))
+                total_tp += len(matched)
+                total_fp += fp
+                total_fn += fn
         else:
             image_id = path.stem
             pred_instances = sorted(pred_instances, key=lambda instance: int(instance.sum()), reverse=True)
@@ -457,8 +472,15 @@ def main() -> None:
                     "mobile_sam_iou_threshold": (
                         float(args.mobile_sam_iou_threshold) if args.mobile_sam_fallback else None
                     ),
-                    "pq": float(np.mean(pq_scores)) if pq_scores else 0.0,
-                    "mean_dice_matched": float(np.mean(mean_dice_scores)) if mean_dice_scores else 0.0,
+                    "metric": "official_iou_pq" if args.official_metric else "legacy_dice_pq",
+                    "pq": (
+                        official_pq(official_iou_sum, total_tp, total_fp, total_fn)
+                        if args.official_metric
+                        else (float(np.mean(pq_scores)) if pq_scores else 0.0)
+                    ),
+                    "mean_dice_matched": (
+                        None if args.official_metric else (float(np.mean(mean_dice_scores)) if mean_dice_scores else 0.0)
+                    ),
                     "tp": total_tp,
                     "fp": total_fp,
                     "fn": total_fn,
