@@ -38,7 +38,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--encoder-name", default="resnet34")
     parser.add_argument("--encoder-weights", default="imagenet")
     parser.add_argument("--arch", choices=["smp_unet", "smp_unetplusplus", "smp_deeplabv3plus"], default="smp_unet")
-    parser.add_argument("--loss", choices=["dice_bce", "tversky", "focal_tversky", "dice_focal", "boundary_dice_focal"], default="dice_bce")
+    parser.add_argument(
+        "--loss",
+        choices=["dice_bce", "iou_bce", "tversky", "focal_tversky", "dice_focal", "boundary_dice_focal"],
+        default="dice_bce",
+    )
     parser.add_argument("--output", type=Path, default=config.MODEL_DIR / "crop_refiner_resnet34_512.pth")
     parser.add_argument("--init-checkpoint", type=Path, default=None)
     parser.add_argument("--patience", type=int, default=2)

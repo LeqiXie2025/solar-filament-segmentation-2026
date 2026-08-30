@@ -19,6 +19,24 @@ class DiceBCELoss(nn.Module):
         return self.bce_weight * bce + (1.0 - self.bce_weight) * dice_loss
 
 
+class IoUBCELoss(nn.Module):
+    """Soft Jaccard objective aligned with the official IoU-based PQ."""
+
+    def __init__(self, bce_weight: float = 0.35, smooth: float = 1.0) -> None:
+        super().__init__()
+        self.bce_weight = bce_weight
+        self.smooth = smooth
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        bce = F.binary_cross_entropy_with_logits(logits, targets)
+        probs = torch.sigmoid(logits)
+        dims = (1, 2, 3)
+        intersection = (probs * targets).sum(dim=dims)
+        union = probs.sum(dim=dims) + targets.sum(dim=dims) - intersection
+        iou_loss = 1.0 - ((intersection + self.smooth) / (union + self.smooth)).mean()
+        return self.bce_weight * bce + (1.0 - self.bce_weight) * iou_loss
+
+
 class TverskyLoss(nn.Module):
     """Tversky loss with asymmetric FP/FN weighting.
 
@@ -111,6 +129,8 @@ class BoundaryDiceFocalLoss(nn.Module):
 def build_loss(name: str) -> nn.Module:
     if name == "dice_bce":
         return DiceBCELoss()
+    if name == "iou_bce":
+        return IoUBCELoss()
     if name == "tversky":
         return TverskyLoss(alpha=0.3, beta=0.7)
     if name == "focal_tversky":

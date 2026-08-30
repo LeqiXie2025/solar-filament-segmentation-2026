@@ -76,6 +76,12 @@ def parse_args() -> argparse.Namespace:
         choices=["detector", "meanprob", "detector_meanprob"],
         default="detector",
     )
+    parser.add_argument(
+        "--min-instance-score",
+        type=float,
+        default=0.0,
+        help="Reject refined instances below the selected score-mode value before mask NMS.",
+    )
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--official-metric", action="store_true")
     return parser.parse_args()
@@ -425,6 +431,8 @@ def main() -> None:
         else:
             pred_scored = refine_boxes(refiner, image, boxes, scores, device, args, image_size) if len(boxes) else []
         pred_scored.extend(mobile_sam_fallback_masks(mobile_sam_predictor, image, boxes, scores, args, device))
+        if args.min_instance_score > 0:
+            pred_scored = [item for item in pred_scored if float(item[1]) >= args.min_instance_score]
         pred_instances = mask_nms(pred_scored, args.mask_nms_iou)
         pred_instances = make_masks_disjoint(pred_instances, args.min_area)
 
@@ -467,6 +475,7 @@ def main() -> None:
                     ),
                     "refiner_tta": bool(args.refiner_tta),
                     "score_mode": args.score_mode,
+                    "min_instance_score": float(args.min_instance_score),
                     "shape_weight": float(args.shape_weight) if shape_refiner is not None else 0.0,
                     "mobile_sam_fallback": bool(args.mobile_sam_fallback),
                     "mobile_sam_iou_threshold": (
