@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -11,8 +12,14 @@ from tqdm import tqdm
 import config
 from src.crop_refiner_utils import crop_bounds_from_bbox, crop_with_padding, make_refiner_channels, seed_from_bbox
 from src.dataset import read_gray_image
+from src.instance_quality import (
+    FEATURE_NAMES,
+    instance_features,
+    load_instance_quality_model,
+    predict_instance_quality,
+)
 from src.masks import encode_binary_mask, postprocess_binary_mask
-from src.metrics import greedy_match, mean_dice_matched, official_pq, official_pq_counts, panoptic_quality
+from src.metrics import greedy_match, mean_dice_matched, official_pq, official_pq_counts, overlap_matrix, panoptic_quality
 from src.model_factory import create_model_from_checkpoint
 from src.predict_detect_refine import make_masks_disjoint, mask_nms, patch_torchvision_nms, refine_boxes, time_val_names
 from src.proposal_classifier import classify_boxes, load_proposal_classifier
@@ -82,6 +89,14 @@ def parse_args() -> argparse.Namespace:
         default=0.0,
         help="Reject refined instances below the selected score-mode value before mask NMS.",
     )
+    parser.add_argument("--instance-quality-model", type=Path, default=None)
+    parser.add_argument("--instance-quality-threshold", type=float, default=None)
+    parser.add_argument(
+        "--quality-dataset-output",
+        type=Path,
+        default=None,
+        help="Save post-NMS validation instance features and official-IoU links for OOF quality training.",
+    )
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--official-metric", action="store_true")
     return parser.parse_args()
@@ -120,6 +135,37 @@ def tile_starts(length: int, tile_size: int, overlap: int) -> list[int]:
     if starts[-1] != last:
         starts.append(last)
     return starts
+
+
+def mask_nms_scored(instances: list[tuple[np.ndarray, float]], iou_threshold: float):
+    if iou_threshold <= 0 or len(instances) < 2:
+        return list(instances)
+    scores = np.asarray([score for _instance, score in instances], dtype=np.float32)
+    order = np.argsort(-scores)
+    keep = []
+    for idx in order:
+        candidate = instances[int(idx)]
+        if all(
+            int(np.logical_and(candidate[0], kept[0]).sum())
+            / max(int(np.logical_or(candidate[0], kept[0]).sum()), 1)
+            < iou_threshold
+            for kept in keep
+        ):
+            keep.append(candidate)
+    return keep
+
+
+def make_masks_disjoint_scored(instances: list[tuple[np.ndarray, float]], min_area: int):
+    if not instances:
+        return []
+    claimed = np.zeros_like(instances[0][0], dtype=bool)
+    disjoint = []
+    for instance, score in instances:
+        clean = (instance.astype(bool) & ~claimed).astype(np.uint8)
+        if int(clean.sum()) >= min_area:
+            disjoint.append((clean, float(score)))
+            claimed |= clean.astype(bool)
+    return disjoint
 
 
 def tiled_detect(detector, image: np.ndarray, detector_conf: float, device, args):
@@ -349,6 +395,12 @@ def main() -> None:
         proposal_classifier, proposal_classifier_image_size, proposal_classifier_pad = load_proposal_classifier(
             args.proposal_classifier, device
         )
+    instance_quality = load_instance_quality_model(args.instance_quality_model) if args.instance_quality_model else None
+    instance_quality_threshold = float(
+        args.instance_quality_threshold
+        if args.instance_quality_threshold is not None
+        else (instance_quality.get("threshold", 0.50) if instance_quality else 0.0)
+    )
 
     image_dir = args.data_dir / ("test_images" if args.mode == "test" else "train_images")
     files = sorted([p for p in image_dir.iterdir() if p.suffix.lower() in {".jpeg", ".jpg", ".png"}])
@@ -364,6 +416,7 @@ def main() -> None:
     mean_dice_scores = []
     total_tp = total_fp = total_fn = 0
     official_iou_sum = 0.0
+    quality_images = []
     if args.mode == "val" and args.official_metric:
         gt_by_file = load_gt_instances_by_annotator(annotation_path, {p.name for p in files})
     elif args.mode == "val":
@@ -433,8 +486,42 @@ def main() -> None:
         pred_scored.extend(mobile_sam_fallback_masks(mobile_sam_predictor, image, boxes, scores, args, device))
         if args.min_instance_score > 0:
             pred_scored = [item for item in pred_scored if float(item[1]) >= args.min_instance_score]
-        pred_instances = mask_nms(pred_scored, args.mask_nms_iou)
-        pred_instances = make_masks_disjoint(pred_instances, args.min_area)
+        pred_scored = mask_nms_scored(pred_scored, args.mask_nms_iou)
+        pred_scored = make_masks_disjoint_scored(pred_scored, args.min_area)
+        quality_features = [instance_features(image, mask, score) for mask, score in pred_scored]
+        if args.quality_dataset_output is not None:
+            if args.mode != "val" or not args.official_metric:
+                raise ValueError("--quality-dataset-output requires --mode val --official-metric")
+            annotator_sets = gt_by_file.get(path.name, [])
+            candidates = []
+            for candidate_idx, ((mask, _score), features) in enumerate(zip(pred_scored, quality_features)):
+                candidate_hits = []
+                for gts in annotator_sets:
+                    overlaps = overlap_matrix([mask], gts, mode="iou")[0] if gts else np.empty((0,))
+                    candidate_hits.append(
+                        [[int(gt_idx), float(iou)] for gt_idx, iou in enumerate(overlaps) if float(iou) > 0.5]
+                    )
+                candidates.append(
+                    {
+                        "candidate_index": candidate_idx,
+                        "features": features.astype(float).tolist(),
+                        "hits": candidate_hits,
+                    }
+                )
+            quality_images.append(
+                {
+                    "file_name": path.name,
+                    "gt_counts": [len(gts) for gts in annotator_sets],
+                    "candidates": candidates,
+                }
+            )
+        if instance_quality is not None and quality_features:
+            quality_scores = predict_instance_quality(instance_quality, np.stack(quality_features))
+            pred_scored = [
+                item for item, quality_score in zip(pred_scored, quality_scores)
+                if float(quality_score) >= instance_quality_threshold
+            ]
+        pred_instances = [mask for mask, _score in pred_scored]
 
         if args.mode == "val":
             if args.official_metric:
@@ -476,6 +563,9 @@ def main() -> None:
                     "refiner_tta": bool(args.refiner_tta),
                     "score_mode": args.score_mode,
                     "min_instance_score": float(args.min_instance_score),
+                    "instance_quality_threshold": (
+                        instance_quality_threshold if instance_quality is not None else None
+                    ),
                     "shape_weight": float(args.shape_weight) if shape_refiner is not None else 0.0,
                     "mobile_sam_fallback": bool(args.mobile_sam_fallback),
                     "mobile_sam_iou_threshold": (
@@ -502,6 +592,13 @@ def main() -> None:
     else:
         pd.DataFrame(rows, columns=["filament_id", "segmentation_rle"]).to_csv(args.output, index=False)
         print(f"saved {args.output} rows={len(rows)}")
+    if args.quality_dataset_output is not None:
+        args.quality_dataset_output.parent.mkdir(parents=True, exist_ok=True)
+        args.quality_dataset_output.write_text(
+            json.dumps({"feature_names": FEATURE_NAMES, "images": quality_images}, ensure_ascii=True),
+            encoding="utf-8",
+        )
+        print(f"saved quality dataset={args.quality_dataset_output}")
 
 
 if __name__ == "__main__":
