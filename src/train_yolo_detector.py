@@ -17,6 +17,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--lr0", type=float, default=2e-4)
+    parser.add_argument("--degrees", type=float, default=0.0)
+    parser.add_argument("--translate", type=float, default=0.10)
+    parser.add_argument("--scale", type=float, default=0.50)
+    parser.add_argument("--fliplr", type=float, default=0.50)
+    parser.add_argument("--flipud", type=float, default=0.0)
+    parser.add_argument("--multi-scale", type=float, default=0.0)
+    parser.add_argument("--mosaic", type=float, default=1.0)
+    parser.add_argument("--weight-decay", type=float, default=5e-4)
     return parser.parse_args()
 
 
@@ -53,8 +61,16 @@ def main() -> None:
         amp=args.amp,
         optimizer="AdamW",
         lr0=args.lr0,
+        weight_decay=args.weight_decay,
         cos_lr=True,
         close_mosaic=5,
+        degrees=args.degrees,
+        translate=args.translate,
+        scale=args.scale,
+        fliplr=args.fliplr,
+        flipud=args.flipud,
+        multi_scale=args.multi_scale,
+        mosaic=args.mosaic,
     )
 
 
