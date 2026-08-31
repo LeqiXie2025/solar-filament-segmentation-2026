@@ -92,6 +92,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--instance-quality-model", type=Path, default=None)
     parser.add_argument("--instance-quality-threshold", type=float, default=None)
     parser.add_argument(
+        "--save-val-predictions",
+        type=Path,
+        default=None,
+        help="Save validation masks as submission-style RLE for detector-ensemble analysis.",
+    )
+    parser.add_argument(
         "--quality-dataset-output",
         type=Path,
         default=None,
@@ -412,6 +418,7 @@ def main() -> None:
         files = files[: args.limit]
 
     rows = []
+    val_prediction_rows = []
     pq_scores = []
     mean_dice_scores = []
     total_tp = total_fp = total_fn = 0
@@ -523,6 +530,16 @@ def main() -> None:
             ]
         pred_instances = [mask for mask, _score in pred_scored]
 
+        if args.mode == "val" and args.save_val_predictions is not None:
+            for idx, instance in enumerate(pred_instances, start=1):
+                val_prediction_rows.append(
+                    {
+                        "file_name": path.name,
+                        "filament_id": f"{path.stem}_{idx}",
+                        "segmentation_rle": encode_binary_mask(instance),
+                    }
+                )
+
         if args.mode == "val":
             if args.official_metric:
                 for gts in gt_by_file.get(path.name, []):
@@ -599,6 +616,13 @@ def main() -> None:
             encoding="utf-8",
         )
         print(f"saved quality dataset={args.quality_dataset_output}")
+    if args.save_val_predictions is not None:
+        args.save_val_predictions.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(
+            val_prediction_rows,
+            columns=["file_name", "filament_id", "segmentation_rle"],
+        ).to_csv(args.save_val_predictions, index=False)
+        print(f"saved validation predictions={args.save_val_predictions}")
 
 
 if __name__ == "__main__":
