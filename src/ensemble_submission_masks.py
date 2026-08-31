@@ -21,6 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--match-iou", type=float, default=0.10)
     parser.add_argument("--min-area", type=int, default=120)
     parser.add_argument("--fusion", choices=["a", "b", "intersection", "union"], default="union")
+    parser.add_argument("--add-extras", action=argparse.BooleanOptionalAction, default=True)
     return parser.parse_args()
 
 
@@ -55,6 +56,7 @@ def main() -> None:
             "a",
             args.fusion,
             args.min_area,
+            args.add_extras,
         )
         for index, mask in enumerate(sorted(masks, key=lambda item: int(item.sum()), reverse=True), start=1):
             rows.append({"filament_id": f"{stem}_{index}", "segmentation_rle": encode_binary_mask(mask)})

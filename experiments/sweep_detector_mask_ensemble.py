@@ -10,6 +10,7 @@ from pycocotools import mask as coco_mask
 import config
 from src.dataset import read_gray_image
 from src.metrics import official_pq, overlap_matrix
+from src.predict_detect_refine import time_val_names
 from src.validation import load_gt_instances_by_annotator
 
 
@@ -43,7 +44,15 @@ def greedy_pairs(a: list[np.ndarray], b: list[np.ndarray], threshold: float):
     return pairs, used_a, used_b
 
 
-def combine(a: list[np.ndarray], b: list[np.ndarray], match_iou: float, source: str, fusion: str, min_area: int):
+def combine(
+    a: list[np.ndarray],
+    b: list[np.ndarray],
+    match_iou: float,
+    source: str,
+    fusion: str,
+    min_area: int,
+    add_extras: bool = True,
+):
     if not a and not b:
         return []
     pairs, used_a, used_b = greedy_pairs(a, b, match_iou)
@@ -85,11 +94,12 @@ def combine(a: list[np.ndarray], b: list[np.ndarray], match_iou: float, source: 
             clean_outputs.append(clean)
             claimed |= clean.astype(bool)
     outputs = clean_outputs
-    for extra in sorted(extras, key=lambda mask: int(mask.sum()), reverse=True):
-        clean = (extra.astype(bool) & ~claimed).astype(np.uint8)
-        if int(clean.sum()) >= min_area:
-            outputs.append(clean)
-            claimed |= clean.astype(bool)
+    if add_extras:
+        for extra in sorted(extras, key=lambda mask: int(mask.sum()), reverse=True):
+            clean = (extra.astype(bool) & ~claimed).astype(np.uint8)
+            if int(clean.sum()) >= min_area:
+                outputs.append(clean)
+                claimed |= clean.astype(bool)
     return outputs
 
 
@@ -113,7 +123,12 @@ def fast_official_counts(preds: list[np.ndarray], gts: list[np.ndarray]):
 def main() -> None:
     args = parse_args()
     a_frame, b_frame = pd.read_csv(args.a), pd.read_csv(args.b)
-    file_names = sorted(set(a_frame["file_name"]) | set(b_frame["file_name"]))
+    existing_files = {
+        path.name
+        for path in config.TRAIN_IMG_DIR.iterdir()
+        if path.suffix.lower() in {".jpeg", ".jpg", ".png"}
+    }
+    file_names = time_val_names(config.ANNOTATION_PATH, existing_files)
     gt = load_gt_instances_by_annotator(config.ANNOTATION_PATH, set(file_names))
     decoded = {}
     for file_name in file_names:
@@ -123,14 +138,21 @@ def main() -> None:
             decode_rows(b_frame, file_name, *image.shape),
         )
 
-    configs = [(0.10, 120, "a", "union")]
+    configs = [
+        (0.10, 120, "a", "a", False),
+        (0.35, 120, "a", "b", False),
+        (0.35, 120, "a", "intersection", False),
+        (0.35, 120, "a", "union", False),
+        (0.70, 120, "a", "intersection", False),
+        (0.70, 120, "a", "union", False),
+    ]
 
     results = []
-    for match_iou, min_area, source, fusion in configs:
+    for match_iou, min_area, source, fusion, add_extras in configs:
         iou_sum = 0.0
         tp = fp = fn = instances = 0
         for file_name in file_names:
-            preds = combine(*decoded[file_name], match_iou, source, fusion, min_area)
+            preds = combine(*decoded[file_name], match_iou, source, fusion, min_area, add_extras)
             instances += len(preds)
             for annotator_gts in gt.get(file_name, []):
                 values = fast_official_counts(preds, annotator_gts)
@@ -149,6 +171,7 @@ def main() -> None:
                 "min_area": min_area,
                 "source": source,
                 "fusion": fusion,
+                "add_extras": add_extras,
             }
         )
     output = pd.DataFrame(results).sort_values("pq", ascending=False)
