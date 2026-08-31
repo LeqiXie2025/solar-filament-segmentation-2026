@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--multi-scale", type=float, default=0.0)
     parser.add_argument("--mosaic", type=float, default=1.0)
     parser.add_argument("--weight-decay", type=float, default=5e-4)
+    parser.add_argument("--seed", type=int, default=0)
     return parser.parse_args()
 
 
@@ -71,6 +72,8 @@ def main() -> None:
         flipud=args.flipud,
         multi_scale=args.multi_scale,
         mosaic=args.mosaic,
+        seed=args.seed,
+        deterministic=True,
     )
 
 
