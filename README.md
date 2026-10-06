@@ -1,84 +1,22 @@
-# Solar Filament Segmentation Challenge 2026
+# Solar Filament Segmentation 2026 — release 0.38
 
-Kaggle competition workspace for the Solar Filament Segmentation Challenge 2026.
+This branch records the code and submission artifacts associated with the current **user-reported public score of 0.38**. The repository does not independently verify a Kaggle upload or score.
 
-Official competition page:
-https://www.kaggle.com/competitions/filament-segmentation-2026
+## Release
 
-## What This Repository Is For
+- Method: R25 proposal-driven mask refinement with the COCO polygon rasterizer candidate.
+- Local evaluation: per-annotator raw COCO annotation records, all-hit matching at strict IoU > 0.5, pooled panoptic quality (PQ).
+- The historical frozen gate passed on 141 exposed development images. It is not independent out-of-fold evidence.
+- Candidate checkpoint SHA-256: `cf053df4739e8d91504b293e2165b7dbb1c1acd7bf4126087c047689cdcd4162`.
+- 0.38 submission SHA-256: `105668985c949fa330dd1bc22992206ad9e0f70088f67d90e7ea216714fe1a3c`.
 
-This repository is a planning, documentation, and baseline modeling workspace.
-It contains a first PyTorch U-Net baseline for reproducible local training.
+Read [RELEASE_038.md](RELEASE_038.md) for implementation details, run commands, required external data and weights, and provenance. The full external-input inventory with SHA-256 hashes is in `experiments/route_recovery_20261004/r25_proposal/repair_01/release_manifest.json`.
 
-Use it to keep:
-
-- competition links and rules notes;
-- data inventory and file structure notes;
-- weekly work plans;
-- experiment logs;
-- submission records;
-- result summaries and final handoff notes.
-
-## What Not To Commit
-
-Do not commit Kaggle credentials, raw competition data, trained model weights,
-large generated masks, or leaderboard-probing submissions unless the team has
-confirmed the rules and repository visibility.
-
-The official data should be downloaded locally into `data/raw/`.
-
-## Main Task
-
-Given solar H-alpha observation images, predict segmentation masks for solar
-filaments. A good prediction marks the pixels belonging to filaments and leaves
-the background unmarked.
-
-The main metric is Dice score, which rewards overlap between the predicted mask
-and the hidden ground-truth mask.
-
-## Current Status
-
-- Kaggle account has joined the competition.
-- GitHub repository is for documentation and reproducible baseline code.
-- First PyTorch GPU smoke test passed locally.
-- Official data should be kept locally under `data/raw/`.
-
-## Repository Map
-
-- `docs/competition_overview.md`: plain-language competition explanation.
-- `docs/data_guide.md`: what official data files mean and how to inspect them.
-- `docs/project_structure.md`: what each folder is for.
-- `docs/weekly_plan.md`: week-by-week execution plan.
-- `experiments/experiments.csv`: table for recording model experiments later.
-- `src/`: PyTorch dataset, preprocessing, model, training, prediction, and RLE utilities.
-- `config.py`: default local paths and hyperparameters.
-- `reports/`: final summaries, findings, charts, and handoff notes.
-- `submissions/`: local Kaggle submission files, ignored by Git by default.
-- `data/raw/`: official Kaggle data, ignored by Git by default.
-- `data/samples/`: small local visual samples, ignored by Git by default.
-
-## Baseline Commands
-
-Install missing dependencies if needed:
+## Entry points
 
 ```powershell
-D:\python3.10.11\python.exe -m pip install -r requirements.txt
+python experiments/route_recovery_20261004/r25_proposal/repair_01/train_paired_rasterizer.py
+python experiments/route_recovery_20261004/r25_proposal/repair_01/export_test_after_gate.py
 ```
 
-Check that PyTorch can use the local GPU:
-
-```powershell
-D:\python3.10.11\python.exe -m src.smoke_gpu
-```
-
-Train the first baseline after the Kaggle data is downloaded into `data/raw/`:
-
-```powershell
-D:\python3.10.11\python.exe -m src.train --epochs 20 --image-size 768 --batch-size 2
-```
-
-Generate a Kaggle submission from the best local checkpoint:
-
-```powershell
-D:\python3.10.11\python.exe -m src.predict --output submissions/submission_unet_baseline.csv
-```
+Training requires CUDA. Export checks the frozen gate and writes a local CSV; it does not upload. Official images, annotations, derived training records, and large model weights remain external prerequisites and are not stored in Git. The other project documents describe historical planning and baseline work.

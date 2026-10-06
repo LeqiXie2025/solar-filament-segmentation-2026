@@ -1,0 +1,37 @@
+{
+  "status": "complete_test_csv_full_qa_passed",
+  "gate_path": "experiments\\route_recovery_20261004\\r25_proposal\\repair_01\\validation_gate.json",
+  "gate_source": "repaired nested validation_gate.json only",
+  "validation_gate_passed": true,
+  "validation_exposure": "Legacy R25 validation is exposed development, not OOF.",
+  "candidate_checkpoint_sha256": "cf053df4739e8d91504b293e2165b7dbb1c1acd7bf4126087c047689cdcd4162",
+  "candidate_tensor_fingerprint": "300b21219a69ab1ef82f9ab3e60c60a26c382d1754db50bb0442571210652a77",
+  "test_images": 180,
+  "validation_images": 141,
+  "test_validation_id_overlap": 0,
+  "test_validation_content_hash_overlap": 0,
+  "image_hashes_verified_against_manifest": 180,
+  "test_images_accounted_for": 180,
+  "empty_images": [
+    "20170708164010Mh.jpeg",
+    "20200310113230Ch.jpeg",
+    "20211214174010Mh.jpeg"
+  ],
+  "nonempty_test_images": 177,
+  "rows": 1227,
+  "unique_filament_ids": true,
+  "rle_masks_checked": 1227,
+  "all_rles_decode_to_2048x2048_nonempty": true,
+  "per_image_masks_nonoverlapping": true,
+  "schema": [
+    "filament_id",
+    "segmentation_rle"
+  ],
+  "csv_rebuild_check": "passed",
+  "csv_sha256": "105668985c949fa330dd1bc22992206ad9e0f70088f67d90e7ea216714fe1a3c",
+  "submission": "submissions\\submission_r25_coco_target_20261004.csv",
+  "download": "C:\\Users\\xlq20\\Downloads\\submission_r25_coco_target_20261004.csv",
+  "uploaded": false,
+  "leaderboard_result": null,
+  "test_label_scoring": "not performed"
+}

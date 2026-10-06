@@ -1,0 +1,1845 @@
+{
+  "experiment": "r25_square_primary_coco_polygon_target_rasterizer_paired_20261004",
+  "status": "preregistered_before_training",
+  "frozen_at_local": "2026-10-04",
+  "objective": "Improve the reproducible R25 square-primary route by changing only polygon target rasterization from OpenCV rounded fill to COCO frPyObjects/merge/decode. Do not claim the historic submitted .37 bytes are recovered; that source identity remains incomplete.",
+  "history_review": {
+    "proposal_box_alignment": "R25 square training already uses a 60% HBB OOF proposal / 40% consensus-GT mix; not novel hypothesis.",
+    "current_decoder": "src.crop_refiner_utils.decode_consensus_mask -> src.masks._decode_polygon -> cv2.fillPoly(round)",
+    "different_route": "R30 paired refiner route is paused and not used as control/evidence; G08 COCO target used different Mask R-CNN and crop policy."
+  },
+  "single_variable": "For polygon masks only, use pycocotools.frPyObjects -> merge -> decode. Candidate averages the exact same consensus_segmentations in the same order as control. RLE behavior, record/member selection, source pools, box, crop rounding, prompt, resize, augmentation, loss and inference are held fixed.",
+  "split": {
+    "train_files": [
+      "20110109104734Ch.jpeg",
+      "20110114105034Ch.jpeg",
+      "20110119082634Lh.jpeg",
+      "20110123174914Mh.jpeg",
+      "20110128174814Mh.jpeg",
+      "20110203082634Lh.jpeg",
+      "20110205082634Lh.jpeg",
+      "20110211084114Th.jpeg",
+      "20110213093414Th.jpeg",
+      "20110215083814Th.jpeg",
+      "20110220082634Lh.jpeg",
+      "20110221173814Mh.jpeg",
+      "20110301082654Uh.jpeg",
+      "20110306082634Lh.jpeg",
+      "20110312082634Lh.jpeg",
+      "20110313082654Uh.jpeg",
+      "20110317082654Uh.jpeg",
+      "20110322005814Mh.jpeg",
+      "20110324082614Th.jpeg",
+      "20110325171014Mh.jpeg",
+      "20110326170914Mh.jpeg",
+      "20110327143554Bh.jpeg",
+      "20110406082634Lh.jpeg",
+      "20110410141654Bh.jpeg",
+      "20110421164914Mh.jpeg",
+      "20110425063154Uh.jpeg",
+      "20110429135554Bh.jpeg",
+      "20110502063154Uh.jpeg",
+      "20110509121334Ch.jpeg",
+      "20110510063134Lh.jpeg",
+      "20110511063154Uh.jpeg",
+      "20110517164514Mh.jpeg",
+      "20110520063154Uh.jpeg",
+      "20110521063134Lh.jpeg",
+      "20110523063154Uh.jpeg",
+      "20110525063154Uh.jpeg",
+      "20110526122534Ch.jpeg",
+      "20110530122834Ch.jpeg",
+      "20110601063134Lh.jpeg",
+      "20110603163414Mh.jpeg",
+      "20110615133454Bh.jpeg",
+      "20110616133454Bh.jpeg",
+      "20110617063134Lh.jpeg",
+      "20110619063134Lh.jpeg",
+      "20110621063134Lh.jpeg",
+      "20110623063134Lh.jpeg",
+      "20110625163814Mh.jpeg",
+      "20110707074514Th.jpeg",
+      "20110711071214Th.jpeg",
+      "20110724164614Mh.jpeg",
+      "20110727063234Lh.jpeg",
+      "20110728084714Th.jpeg",
+      "20110803164914Mh.jpeg",
+      "20110810063134Lh.jpeg",
+      "20110815140454Bh.jpeg",
+      "20110823120334Ch.jpeg",
+      "20110824141054Bh.jpeg",
+      "20110826074214Th.jpeg",
+      "20110902073614Th.jpeg",
+      "20110914063134Lh.jpeg",
+      "20110918112834Ch.jpeg",
+      "20110923112234Ch.jpeg",
+      "20110923165814Mh.jpeg",
+      "20111009110234Ch.jpeg",
+      "20111011112054Uh.jpeg",
+      "20111018063134Lh.jpeg",
+      "20111019063154Uh.jpeg",
+      "20111025080614Th.jpeg",
+      "20111027145954Bh.jpeg",
+      "20111029063154Uh.jpeg",
+      "20111107063154Uh.jpeg",
+      "20111112193254Bh.jpeg",
+      "20111114082314Th.jpeg",
+      "20111115063134Lh.jpeg",
+      "20111116063134Lh.jpeg",
+      "20111201063154Uh.jpeg",
+      "20111206102934Ch.jpeg",
+      "20111208063134Lh.jpeg",
+      "20111214063134Lh.jpeg",
+      "20111214132434Ch.jpeg",
+      "20111215063134Lh.jpeg",
+      "20111218085014Th.jpeg",
+      "20111222063154Uh.jpeg",
+      "20111223085314Th.jpeg",
+      "20111226155454Bh.jpeg",
+      "20111229063154Uh.jpeg",
+      "20120103104134Ch.jpeg",
+      "20120104063134Lh.jpeg",
+      "20120110155754Bh.jpeg",
+      "20120113104834Ch.jpeg",
+      "20120114063154Uh.jpeg",
+      "20120116063254Uh.jpeg",
+      "20120127085214Th.jpeg",
+      "20120131063154Uh.jpeg",
+      "20120205172414Mh.jpeg",
+      "20120206063134Lh.jpeg",
+      "20120213063134Lh.jpeg",
+      "20120215153654Bh.jpeg",
+      "20120217063154Uh.jpeg",
+      "20120217181154Bh.jpeg",
+      "20120218173614Mh.jpeg",
+      "20120223063154Uh.jpeg",
+      "20120223152054Bh.jpeg",
+      "20120225172914Mh.jpeg",
+      "20120227161654Bh.jpeg",
+      "20120306063154Uh.jpeg",
+      "20120313063154Uh.jpeg",
+      "20120318063154Uh.jpeg",
+      "20120323144054Bh.jpeg",
+      "20120328164614Mh.jpeg",
+      "20120330063134Lh.jpeg",
+      "20120330063154Uh.jpeg",
+      "20120331142954Bh.jpeg",
+      "20120403083114Th.jpeg",
+      "20120403164114Mh.jpeg",
+      "20120404063154Uh.jpeg",
+      "20120414115434Ch.jpeg",
+      "20120414175914Mh.jpeg",
+      "20120421063154Uh.jpeg",
+      "20120424072414Th.jpeg",
+      "20120424120134Ch.jpeg",
+      "20120427063154Uh.jpeg",
+      "20120427162614Mh.jpeg",
+      "20120430063154Uh.jpeg",
+      "20120509163414Mh.jpeg",
+      "20120519070814Th.jpeg",
+      "20120523163014Mh.jpeg",
+      "20120603123034Ch.jpeg",
+      "20120610175114Mh.jpeg",
+      "20120627162114Mh.jpeg",
+      "20120703070814Th.jpeg",
+      "20120712123634Ch.jpeg",
+      "20120715123434Ch.jpeg",
+      "20120720085114Th.jpeg",
+      "20120723095014Th.jpeg",
+      "20120725122934Ch.jpeg",
+      "20120726071914Th.jpeg",
+      "20120729122634Ch.jpeg",
+      "20120730135454Bh.jpeg",
+      "20120802090314Th.jpeg",
+      "20120803102114Th.jpeg",
+      "20120803164614Mh.jpeg",
+      "20120810121634Ch.jpeg",
+      "20120811121434Ch.jpeg",
+      "20120813164714Mh.jpeg",
+      "20120814140454Bh.jpeg",
+      "20120814163114Mh.jpeg",
+      "20120816072814Th.jpeg",
+      "20120827085114Th.jpeg",
+      "20120829063134Lh.jpeg",
+      "20120901114934Ch.jpeg",
+      "20120907141954Bh.jpeg",
+      "20120910074014Th.jpeg",
+      "20120913165314Mh.jpeg",
+      "20120914063134Lh.jpeg",
+      "20120917142654Bh.jpeg",
+      "20120928063134Lh.jpeg",
+      "20121006063534Lh.jpeg",
+      "20121007131134Ch.jpeg",
+      "20121009165914Mh.jpeg",
+      "20121018063134Lh.jpeg",
+      "20121021145454Bh.jpeg",
+      "20121022145554Bh.jpeg",
+      "20121024164714Mh.jpeg",
+      "20121026063134Lh.jpeg",
+      "20121027063134Lh.jpeg",
+      "20121027165114Mh.jpeg",
+      "20121030150354Bh.jpeg",
+      "20121108155954Bh.jpeg",
+      "20121109103634Ch.jpeg",
+      "20121113103634Ch.jpeg",
+      "20121114172254Bh.jpeg",
+      "20121118092514Th.jpeg",
+      "20121129063154Uh.jpeg",
+      "20121207103034Ch.jpeg",
+      "20121208171514Mh.jpeg",
+      "20121218063534Lh.jpeg",
+      "20121219063154Uh.jpeg",
+      "20130107174854Bh.jpeg",
+      "20130109130334Ch.jpeg",
+      "20130110104734Ch.jpeg",
+      "20130111104734Ch.jpeg",
+      "20130116172814Mh.jpeg",
+      "20130201084914Th.jpeg",
+      "20130208063154Uh.jpeg",
+      "20130211063134Lh.jpeg",
+      "20130212153254Bh.jpeg",
+      "20130214111534Ch.jpeg",
+      "20130218220314Mh.jpeg",
+      "20130219063134Lh.jpeg",
+      "20130221063134Lh.jpeg",
+      "20130222082914Th.jpeg",
+      "20130225171214Mh.jpeg",
+      "20130303063134Lh.jpeg",
+      "20130303063154Uh.jpeg",
+      "20130304170614Mh.jpeg",
+      "20130305112734Ch.jpeg",
+      "20130306172214Mh.jpeg",
+      "20130314165714Mh.jpeg",
+      "20130319144654Bh.jpeg",
+      "20130324015554Uh.jpeg",
+      "20130326063134Lh.jpeg",
+      "20130327175114Mh.jpeg",
+      "20130404063134Lh.jpeg",
+      "20130405114734Ch.jpeg",
+      "20130407063154Uh.jpeg",
+      "20130411115134Ch.jpeg",
+      "20130419070254Uh.jpeg",
+      "20130423072414Th.jpeg",
+      "20130425135954Bh.jpeg",
+      "20130429063154Uh.jpeg",
+      "20130502063134Lh.jpeg",
+      "20130510134654Bh.jpeg",
+      "20130517063134Lh.jpeg",
+      "20130601063154Uh.jpeg",
+      "20130609123334Ch.jpeg",
+      "20130609173414Mh.jpeg",
+      "20130611063154Uh.jpeg",
+      "20130615002434Lh.jpeg",
+      "20130616070414Th.jpeg",
+      "20130628063134Lh.jpeg",
+      "20130630070714Th.jpeg",
+      "20130705161714Mh.jpeg",
+      "20130707134154Bh.jpeg",
+      "20130716162214Mh.jpeg",
+      "20130717123434Ch.jpeg",
+      "20130719140154Bh.jpeg",
+      "20130725122934Ch.jpeg",
+      "20130805135854Bh.jpeg",
+      "20130807073114Th.jpeg",
+      "20130808140054Bh.jpeg",
+      "20130809072814Th.jpeg",
+      "20130810121534Ch.jpeg",
+      "20130811140254Bh.jpeg",
+      "20130813060834Lh.jpeg",
+      "20130824060834Lh.jpeg",
+      "20130828141354Bh.jpeg",
+      "20130901073614Th.jpeg",
+      "20130903060834Lh.jpeg",
+      "20130903141654Bh.jpeg",
+      "20130905073714Th.jpeg",
+      "20130913142354Bh.jpeg",
+      "20130919060834Lh.jpeg",
+      "20130921060834Lh.jpeg",
+      "20130923060834Lh.jpeg",
+      "20130925143254Bh.jpeg",
+      "20130926060834Lh.jpeg",
+      "20131006075314Th.jpeg",
+      "20131007075314Th.jpeg",
+      "20131011195414Mh.jpeg",
+      "20131013185334Ch.jpeg",
+      "20131016185334Ch.jpeg",
+      "20131017185334Ch.jpeg",
+      "20131019080114Th.jpeg",
+      "20131020080114Th.jpeg",
+      "20131025185414Mh.jpeg",
+      "20131027025654Uh.jpeg",
+      "20131028190734Ch.jpeg",
+      "20131030185354Bh.jpeg",
+      "20131031185614Mh.jpeg",
+      "20131101222734Lh.jpeg",
+      "20131107043054Uh.jpeg",
+      "20131108045254Uh.jpeg",
+      "20131109190514Mh.jpeg",
+      "20131109222434Lh.jpeg",
+      "20131113004514Mh.jpeg",
+      "20131113185414Mh.jpeg",
+      "20131115185414Mh.jpeg",
+      "20131116185334Ch.jpeg",
+      "20131125192154Bh.jpeg",
+      "20131128192214Mh.jpeg",
+      "20131130192134Ch.jpeg",
+      "20131201192134Ch.jpeg",
+      "20131204192154Bh.jpeg",
+      "20131206084114Th.jpeg",
+      "20131207084214Th.jpeg",
+      "20131224192154Bh.jpeg",
+      "20131225065154Uh.jpeg",
+      "20131229112414Th.jpeg",
+      "20140111224134Lh.jpeg",
+      "20140112180134Ch.jpeg",
+      "20140116180214Mh.jpeg",
+      "20140122180214Mh.jpeg",
+      "20140127180134Ch.jpeg",
+      "20140128174554Bh.jpeg",
+      "20140205180154Bh.jpeg",
+      "20140210180154Bh.jpeg",
+      "20140212024554Uh.jpeg",
+      "20140213024554Uh.jpeg",
+      "20140216230134Lh.jpeg",
+      "20140218230234Lh.jpeg",
+      "20140225163314Th.jpeg",
+      "20140312025454Uh.jpeg",
+      "20140312081114Th.jpeg",
+      "20140321195814Mh.jpeg",
+      "20140323020654Uh.jpeg",
+      "20140401014754Uh.jpeg",
+      "20140406195854Bh.jpeg",
+      "20140409081614Th.jpeg",
+      "20140411013854Uh.jpeg",
+      "20140413195914Mh.jpeg",
+      "20140414020354Uh.jpeg",
+      "20140414195834Ch.jpeg",
+      "20140420085614Th.jpeg",
+      "20140428233234Lh.jpeg",
+      "20140430071914Th.jpeg",
+      "20140501195814Mh.jpeg",
+      "20140508195834Ch.jpeg",
+      "20140509071314Th.jpeg",
+      "20140509195814Mh.jpeg",
+      "20140513012554Uh.jpeg",
+      "20140522070614Th.jpeg",
+      "20140523195814Mh.jpeg",
+      "20140525070514Th.jpeg",
+      "20140531195834Ch.jpeg",
+      "20140601195814Mh.jpeg",
+      "20140603070414Th.jpeg",
+      "20140604195854Bh.jpeg",
+      "20140605195854Bh.jpeg",
+      "20140607112354Uh.jpeg",
+      "20140607195854Bh.jpeg",
+      "20140609195854Bh.jpeg",
+      "20140615195814Mh.jpeg",
+      "20140615195854Bh.jpeg",
+      "20140701195814Mh.jpeg",
+      "20140705035754Uh.jpeg",
+      "20140709195814Mh.jpeg",
+      "20140710083214Th.jpeg",
+      "20140712195854Bh.jpeg",
+      "20140716195854Bh.jpeg",
+      "20140719071414Th.jpeg",
+      "20140720195834Ch.jpeg",
+      "20140723071614Th.jpeg",
+      "20140725195814Mh.jpeg",
+      "20140726071814Th.jpeg",
+      "20140802072114Th.jpeg",
+      "20140803234534Lh.jpeg",
+      "20140806195834Ch.jpeg",
+      "20140807195854Bh.jpeg",
+      "20140813064254Uh.jpeg",
+      "20140814195854Bh.jpeg",
+      "20140816072814Th.jpeg",
+      "20140817195834Ch.jpeg",
+      "20140818195814Mh.jpeg",
+      "20140821195834Ch.jpeg",
+      "20140903073614Th.jpeg",
+      "20140904195814Mh.jpeg",
+      "20140908175354Bh.jpeg",
+      "20140908231334Lh.jpeg",
+      "20140918195854Bh.jpeg",
+      "20140921195854Bh.jpeg",
+      "20140922195854Bh.jpeg",
+      "20140927014554Uh.jpeg",
+      "20141001195834Ch.jpeg",
+      "20141004075414Th.jpeg",
+      "20141006224634Lh.jpeg",
+      "20141007224934Lh.jpeg",
+      "20141009023454Uh.jpeg",
+      "20141010195834Ch.jpeg",
+      "20141012015654Uh.jpeg",
+      "20141012195854Bh.jpeg",
+      "20141013195834Ch.jpeg",
+      "20141013195854Bh.jpeg",
+      "20141016022554Uh.jpeg",
+      "20141016195834Ch.jpeg",
+      "20141022223334Lh.jpeg",
+      "20141024195834Ch.jpeg",
+      "20141025031154Uh.jpeg",
+      "20141026024454Uh.jpeg",
+      "20141027025054Uh.jpeg",
+      "20141027224834Lh.jpeg",
+      "20141105195814Mh.jpeg",
+      "20141106195854Bh.jpeg",
+      "20141112195854Bh.jpeg",
+      "20141116222234Lh.jpeg",
+      "20141129222134Lh.jpeg",
+      "20141210201814Mh.jpeg",
+      "20141214201834Ch.jpeg",
+      "20141216222634Lh.jpeg",
+      "20141225024354Uh.jpeg",
+      "20141225172214Mh.jpeg",
+      "20150112081954Uh.jpeg",
+      "20150113105034Ch.jpeg",
+      "20150113155654Bh.jpeg",
+      "20150116082034Lh.jpeg",
+      "20150119082034Lh.jpeg",
+      "20150125172714Mh.jpeg",
+      "20150130084914Th.jpeg",
+      "20150203084714Th.jpeg",
+      "20150207084414Th.jpeg",
+      "20150216171714Mh.jpeg",
+      "20150221155154Bh.jpeg",
+      "20150222090014Th.jpeg",
+      "20150222112034Ch.jpeg",
+      "20150225171114Mh.jpeg",
+      "20150228082414Th.jpeg",
+      "20150302082034Lh.jpeg",
+      "20150305081954Uh.jpeg",
+      "20150308081954Uh.jpeg",
+      "20150314081954Uh.jpeg",
+      "20150315082034Lh.jpeg",
+      "20150323172814Mh.jpeg",
+      "20150324145954Bh.jpeg",
+      "20150325015554Uh.jpeg",
+      "20150327145114Th.jpeg",
+      "20150330081954Uh.jpeg",
+      "20150409081954Uh.jpeg",
+      "20150417082314Th.jpeg",
+      "20150421140454Bh.jpeg",
+      "20150423120034Ch.jpeg",
+      "20150427162314Mh.jpeg",
+      "20150501120634Ch.jpeg",
+      "20150518145654Bh.jpeg",
+      "20150527082014Th.jpeg",
+      "20150527161214Mh.jpeg",
+      "20150531082034Lh.jpeg",
+      "20150610082014Th.jpeg",
+      "20150614162514Mh.jpeg",
+      "20150615133554Bh.jpeg",
+      "20150617161314Mh.jpeg",
+      "20150620082014Th.jpeg",
+      "20150621161314Mh.jpeg",
+      "20150625082014Th.jpeg",
+      "20150625082034Lh.jpeg",
+      "20150626161514Mh.jpeg",
+      "20150627133754Bh.jpeg",
+      "20150629161614Mh.jpeg",
+      "20150630083214Th.jpeg",
+      "20150706083014Th.jpeg",
+      "20150716162114Mh.jpeg",
+      "20150718082014Th.jpeg",
+      "20150719182314Mh.jpeg",
+      "20150720082014Th.jpeg",
+      "20150727082014Th.jpeg",
+      "20150731082034Lh.jpeg",
+      "20150806082034Lh.jpeg",
+      "20150819082014Th.jpeg",
+      "20150820152254Bh.jpeg",
+      "20150825082034Lh.jpeg",
+      "20150830084134Lh.jpeg",
+      "20150913082014Th.jpeg",
+      "20150916055454Uh.jpeg",
+      "20150919165814Mh.jpeg",
+      "20150926111934Ch.jpeg",
+      "20150927111834Ch.jpeg",
+      "20151011144554Bh.jpeg",
+      "20151013144654Bh.jpeg",
+      "20151019223534Lh.jpeg",
+      "20151105133734Ch.jpeg",
+      "20151106171514Mh.jpeg",
+      "20151107133734Ch.jpeg",
+      "20151116201114Mh.jpeg",
+      "20151116224034Lh.jpeg",
+      "20151117172314Mh.jpeg",
+      "20151118172314Mh.jpeg",
+      "20151119133734Ch.jpeg",
+      "20151122172614Mh.jpeg",
+      "20151128133714Th.jpeg",
+      "20151128133734Ch.jpeg",
+      "20151128222134Lh.jpeg",
+      "20151209201754Bh.jpeg",
+      "20151212171154Bh.jpeg",
+      "20151213023454Uh.jpeg",
+      "20151219133734Ch.jpeg",
+      "20151224133734Ch.jpeg",
+      "20151226133734Ch.jpeg",
+      "20151228024254Uh.jpeg",
+      "20160101133714Th.jpeg",
+      "20160103133734Ch.jpeg",
+      "20160107133714Th.jpeg",
+      "20160110133714Th.jpeg",
+      "20160125154854Bh.jpeg",
+      "20160127225034Lh.jpeg",
+      "20160129225334Lh.jpeg",
+      "20160201025254Uh.jpeg",
+      "20160204133734Ch.jpeg",
+      "20160213153054Bh.jpeg",
+      "20160215133734Ch.jpeg",
+      "20160215175514Mh.jpeg",
+      "20160223173514Mh.jpeg",
+      "20160225173314Mh.jpeg",
+      "20160226173214Mh.jpeg",
+      "20160229151254Bh.jpeg",
+      "20160302133734Ch.jpeg",
+      "20160309172214Mh.jpeg",
+      "20160310133734Ch.jpeg",
+      "20160315133714Th.jpeg",
+      "20160317232434Lh.jpeg",
+      "20160320133714Th.jpeg",
+      "20160326143654Bh.jpeg",
+      "20160327170714Mh.jpeg",
+      "20160401133734Ch.jpeg",
+      "20160401170314Mh.jpeg",
+      "20160402025254Uh.jpeg",
+      "20160403170114Mh.jpeg",
+      "20160408232234Lh.jpeg",
+      "20160411134234Ch.jpeg",
+      "20160430133714Th.jpeg",
+      "20160430133734Ch.jpeg",
+      "20160501143154Bh.jpeg",
+      "20160510163914Mh.jpeg",
+      "20160516012454Uh.jpeg",
+      "20160518011654Uh.jpeg",
+      "20160526011254Uh.jpeg",
+      "20160530234734Lh.jpeg",
+      "20160604163414Mh.jpeg",
+      "20160606163514Mh.jpeg",
+      "20160609133654Bh.jpeg",
+      "20160617133654Bh.jpeg",
+      "20160619133714Th.jpeg",
+      "20160627133734Ch.jpeg",
+      "20160628152654Bh.jpeg",
+      "20160629133714Th.jpeg",
+      "20160703133714Th.jpeg",
+      "20160714235434Lh.jpeg",
+      "20160720133734Ch.jpeg",
+      "20160724135554Bh.jpeg",
+      "20160726135354Bh.jpeg",
+      "20160804133734Ch.jpeg",
+      "20160808133714Th.jpeg",
+      "20160809164914Mh.jpeg",
+      "20160810234034Lh.jpeg",
+      "20160831133714Th.jpeg",
+      "20160920230134Lh.jpeg",
+      "20160925165814Mh.jpeg",
+      "20160925225634Lh.jpeg",
+      "20160927133734Ch.jpeg",
+      "20160928143554Bh.jpeg",
+      "20161002225034Lh.jpeg",
+      "20161012133734Ch.jpeg",
+      "20161013133734Ch.jpeg",
+      "20161023133814Th.jpeg",
+      "20161105222634Lh.jpeg",
+      "20161108021454Uh.jpeg",
+      "20161109171714Mh.jpeg",
+      "20161110151454Bh.jpeg",
+      "20161116133714Th.jpeg",
+      "20161129022454Uh.jpeg",
+      "20161201160954Bh.jpeg",
+      "20161205133714Th.jpeg",
+      "20161210133714Th.jpeg",
+      "20161217133734Ch.jpeg",
+      "20161222133714Th.jpeg",
+      "20161223133734Ch.jpeg",
+      "20161224024154Uh.jpeg",
+      "20161229133734Ch.jpeg",
+      "20161231133734Ch.jpeg",
+      "20170102024454Uh.jpeg",
+      "20170103030554Uh.jpeg",
+      "20170106133714Th.jpeg",
+      "20170107133714Th.jpeg",
+      "20170117175014Mh.jpeg",
+      "20170119031254Uh.jpeg",
+      "20170122034654Uh.jpeg",
+      "20170125133734Ch.jpeg",
+      "20170217165250Bh.jpeg",
+      "20170218173710Mh.jpeg",
+      "20170222133710Th.jpeg",
+      "20170310133730Ch.jpeg",
+      "20170310173450Bh.jpeg",
+      "20170316133730Ch.jpeg",
+      "20170322015550Uh.jpeg",
+      "20170323041730Lh.jpeg",
+      "20170327143550Bh.jpeg",
+      "20170329133730Ch.jpeg",
+      "20170408133710Th.jpeg"
+    ],
+    "validation_files": [
+      "20170411013550Uh.jpeg",
+      "20170415145450Bh.jpeg",
+      "20170417014150Uh.jpeg",
+      "20170417232530Lh.jpeg",
+      "20170418013450Uh.jpeg",
+      "20170423014350Uh.jpeg",
+      "20170425133730Ch.jpeg",
+      "20170427154550Bh.jpeg",
+      "20170502233130Lh.jpeg",
+      "20170503013050Uh.jpeg",
+      "20170609133710Th.jpeg",
+      "20170612135150Bh.jpeg",
+      "20170619012150Uh.jpeg",
+      "20170701235630Lh.jpeg",
+      "20170702133730Ch.jpeg",
+      "20170719235330Lh.jpeg",
+      "20170722235230Lh.jpeg",
+      "20170726235030Lh.jpeg",
+      "20170728150230Ch.jpeg",
+      "20170801164710Mh.jpeg",
+      "20170804140650Bh.jpeg",
+      "20170805133710Th.jpeg",
+      "20170806133710Th.jpeg",
+      "20170809164910Mh.jpeg",
+      "20170827165310Mh.jpeg",
+      "20170831170750Bh.jpeg",
+      "20170925225630Lh.jpeg",
+      "20170927143450Bh.jpeg",
+      "20171004143950Bh.jpeg",
+      "20171005133730Ch.jpeg",
+      "20171005144050Bh.jpeg",
+      "20171007133710Th.jpeg",
+      "20171007133730Ch.jpeg",
+      "20171008144250Bh.jpeg",
+      "20171011170310Mh.jpeg",
+      "20171011224130Lh.jpeg",
+      "20171014133730Ch.jpeg",
+      "20171022170710Mh.jpeg",
+      "20171025133730Ch.jpeg",
+      "20171025223130Lh.jpeg",
+      "20171027223030Lh.jpeg",
+      "20171029150150Bh.jpeg",
+      "20171101133730Ch.jpeg",
+      "20171103222630Lh.jpeg",
+      "20171106171510Mh.jpeg",
+      "20171109023950Uh.jpeg",
+      "20171114133730Ch.jpeg",
+      "20171115170950Bh.jpeg",
+      "20171115222230Lh.jpeg",
+      "20171121222130Lh.jpeg",
+      "20171123133730Ch.jpeg",
+      "20171123222130Lh.jpeg",
+      "20180109223930Lh.jpeg",
+      "20180112130330Ch.jpeg",
+      "20180202130330Ch.jpeg",
+      "20180301050430Lh.jpeg",
+      "20180306081810Th.jpeg",
+      "20180309000910Mh.jpeg",
+      "20180318020350Uh.jpeg",
+      "20180318232230Lh.jpeg",
+      "20180506140230Ch.jpeg",
+      "20180710031950Uh.jpeg",
+      "20180712123630Ch.jpeg",
+      "20180714000010Mh.jpeg",
+      "20180801232450Bh.jpeg",
+      "20180804234530Lh.jpeg",
+      "20180805232510Mh.jpeg",
+      "20180825205030Ch.jpeg",
+      "20180827232530Lh.jpeg",
+      "20180923112330Ch.jpeg",
+      "20180924112030Ch.jpeg",
+      "20180925000030Lh.jpeg",
+      "20180926014350Uh.jpeg",
+      "20181014105830Ch.jpeg",
+      "20181023232430Lh.jpeg",
+      "20181024232430Lh.jpeg",
+      "20181101230010Mh.jpeg",
+      "20181102104630Ch.jpeg",
+      "20190317145150Bh.jpeg",
+      "20190322144450Bh.jpeg",
+      "20190412025430Lh.jpeg",
+      "20190602025430Lh.jpeg",
+      "20190609123330Ch.jpeg",
+      "20190611032810Mh.jpeg",
+      "20190626025430Lh.jpeg",
+      "20190629163710Mh.jpeg",
+      "20190701123830Ch.jpeg",
+      "20190704123830Ch.jpeg",
+      "20190805054730Lh.jpeg",
+      "20190925165810Mh.jpeg",
+      "20190926165810Mh.jpeg",
+      "20190927165910Mh.jpeg",
+      "20200105073250Uh.jpeg",
+      "20200110073230Lh.jpeg",
+      "20200114073230Lh.jpeg",
+      "20200116073250Uh.jpeg",
+      "20200619123010Th.jpeg",
+      "20200806053830Lh.jpeg",
+      "20201022223330Lh.jpeg",
+      "20201227202710Mh.jpeg",
+      "20201228202430Ch.jpeg",
+      "20210103223630Lh.jpeg",
+      "20210201020330Lh.jpeg",
+      "20210222222850Bh.jpeg",
+      "20210223222830Ch.jpeg",
+      "20210329015250Uh.jpeg",
+      "20210329114430Ch.jpeg",
+      "20210331231510Mh.jpeg",
+      "20210616142650Bh.jpeg",
+      "20210620163530Mh.jpeg",
+      "20210621133650Bh.jpeg",
+      "20210624133950Bh.jpeg",
+      "20210626060050Uh.jpeg",
+      "20210626133950Bh.jpeg",
+      "20210721123430Ch.jpeg",
+      "20210728164530Mh.jpeg",
+      "20210731074710Th.jpeg",
+      "20210810121630Ch.jpeg",
+      "20210812044930Lh.jpeg",
+      "20210814044930Lh.jpeg",
+      "20210815140550Bh.jpeg",
+      "20210817165030Mh.jpeg",
+      "20211016145050Bh.jpeg",
+      "20211119103130Ch.jpeg",
+      "20211222120130Ch.jpeg",
+      "20211225025850Uh.jpeg",
+      "20211229120130Ch.jpeg",
+      "20211229120210Th.jpeg",
+      "20211231223430Lh.jpeg",
+      "20220104043050Uh.jpeg",
+      "20220122085210Th.jpeg",
+      "20220328143550Bh.jpeg",
+      "20220418020950Uh.jpeg",
+      "20220617185352Mh.jpeg",
+      "20220618185332Bh.jpeg",
+      "20220622205632Bh.jpeg",
+      "20220710085152Th.jpeg",
+      "20220718185352Mh.jpeg",
+      "20220721185332Bh.jpeg",
+      "20220724185352Mh.jpeg",
+      "20220803074752Th.jpeg"
+    ],
+    "train_count": 566,
+    "validation_count": 141,
+    "train_validation_overlap": 0,
+    "train_list_sha256": "fa70b9ef7169b6dca16c493c810178eb4cd243cdc1d524bf4979a992cc32cf77",
+    "validation_list_sha256": "f4ecb14c45b0af6bc981c3e0b47481f0ab9a44d34124c88fef12a92a6d402fdc",
+    "validation_use": "Previously reused/exposed R25 and R22 development set; no independent OOF claim."
+  },
+  "sources": {
+    "path_by_key": {
+      "split_preregistration": "experiments/aspect_refiner_r25_20260922/preregistration.json",
+      "base_square_primary": "experiments/aspect_refiner_r25_20260922/square_control.pth",
+      "original_r25_training_code": "experiments/aspect_refiner_r25.py",
+      "r25_export_code": "experiments/export_r25_probe.py",
+      "source_oof_proposals": "data/clean/hbb_oof_r4_proposals.json",
+      "source_consensus_annotations": "data/clean/train_annotations_consensus.json",
+      "raw_evaluation_annotations": "data/raw/train_annotations.json",
+      "official_r25_detector": "models/yolo/yolo11s_boxes_1280_e25/weights/best.pt",
+      "r25_shape_refiner": "models/crop_refiner_resnet34_512_consensus_ft.pth",
+      "r22_corrector": "experiments/mask_correction_r22_20260918/corrector.pth",
+      "r25_r22_base_submission": "submissions/submission_obb_gate_extras_pq04502_20260901.csv",
+      "obb_confirmation_val_csv": "experiments/valpred_obb_refine_tta_c030.csv",
+      "obb_extras_val_csv": "experiments/valpred_obb_refine_tta_c038.csv",
+      "obb_confirmation_test_csv": "submissions/submission_obb_refine_tta_c030.csv",
+      "obb_extras_test_csv": "submissions/submission_obb_refine_tta_c038.csv",
+      "fixed_validation_detector_boxes": "experiments/pipeline_diagnosis_r5/detector_boxes.json",
+      "frozen_r25_original_val_predictions": "experiments/r25_probe_20260924/valpred.csv",
+      "training_runner": "experiments/route_recovery_20261004/r25_proposal/repair_01/train_paired_rasterizer.py",
+      "fit_only_support_audit": "experiments/route_recovery_20261004/r25_proposal/r25_training_rasterizer_support_preflight.json",
+      "decoder_fixtures": "experiments/route_recovery_20261004/r25_proposal/decoder_fixtures.json"
+    },
+    "sha256_by_key": {
+      "split_preregistration": "c0487ca8630d3ff80c0d2fff758011fbb2ce95886057970d5c38c16698c5cd58",
+      "base_square_primary": "a6959e9208786595b1d4b3d43041202b778bcd7af22296079cd1a6835dfb90ae",
+      "original_r25_training_code": "b4a29b9c970cb0ce341aa021c31162747689a3490a3b35e7731b70963479abeb",
+      "r25_export_code": "acf64724fff32a97d758e77608c7aa1554398a260963b5169c4e44c1c9bd2e05",
+      "source_oof_proposals": "8760171997b7011b501d2c279c01d77aee6a32099380f03c7c3c170c38dca462",
+      "source_consensus_annotations": "54354d5b6039e0161cf45f8f3cb869490f34900170ef6ad9a3994d5083516ac7",
+      "raw_evaluation_annotations": "5da9e92b5a1a1947fd5d57adb6688269625c48ec1ef884daf2a01618c9ed54a1",
+      "official_r25_detector": "375d2ab601ccbfce11145e8a80cb5b9a2a1bc032b316de7f7cd5b7cfb39f518a",
+      "r25_shape_refiner": "80fed5b5c2f413217f8ff4031e33c106f28d5fa9d4b36b9756cb147c90d995a7",
+      "r22_corrector": "5589887a00ca35380517e3b24548fc4b5f0e388e7cda3d788c45ecfaae1b8779",
+      "r25_r22_base_submission": "f24bf525cbb196807d98beb8efb3363baa97f72bc5a4ce1625189b0d4350ef35",
+      "obb_confirmation_val_csv": "ca13a0c0d0bd906c8fdd4e1ca46bfe0d72e217f4bb0c9dac0a5d355d23d9dd1f",
+      "obb_extras_val_csv": "69686134fd8439d2a8329c8a3b817e1d9b55aa8b3f5174e2645ced66f5cf2420",
+      "obb_confirmation_test_csv": "48869c134a2f03a52489594b944a4c8ed70f9e26cb039626c46279019568c546",
+      "obb_extras_test_csv": "10ce194b6643de3e9b476f8edb03326e4af41eb14961f63eb8e01aee6e9b93d3",
+      "fixed_validation_detector_boxes": "1749244938de4fc01e4890b53292c2cc9e67747f51f74618e42704fdd34c4149",
+      "frozen_r25_original_val_predictions": "799fa025f604eb0f660bf8b44e7129f208d75956959dd12954900300aed2cb5c",
+      "training_runner": "3e886f0bb2fecc3363f610cb44a31aaabe982898f0b67c8c9fb175996b19abde",
+      "fit_only_support_audit": "b8bf13edbe5e83748a742e7412ae58e0ebbd777e5d57f51e93d790b9483d46c6",
+      "decoder_fixtures": "b5b46b7ccf6a05e267876cf5ff971e4155db51041d7ad566c63f7cb821332d39"
+    },
+    "square_primary_sha256": "a6959e9208786595b1d4b3d43041202b778bcd7af22296079cd1a6835dfb90ae",
+    "original_r25_fullroute_baseline_coco": {
+      "status": "rescored_official_COCO",
+      "images": 141,
+      "predictions": 399,
+      "raw_annotation_records": 230,
+      "iou_sum": 289.77010829868505,
+      "tp": 433,
+      "fp": 222,
+      "fn": 244,
+      "pq": 0.4350902527007283,
+      "old_r25_reported_pq_cv2": 0.45438477432763613,
+      "old_report_metric_not_comparable": "Original validation used cv2 polygon GT decoding; this is separately rescored COCO baseline.",
+      "valpred_sha256": "799fa025f604eb0f660bf8b44e7129f208d75956959dd12954900300aed2cb5c"
+    },
+    "R25 historical user-reported score": 0.37,
+    "historical_submitted_bytes_independently_confirmed": false
+  },
+  "sampler_schedule_file": "experiments/route_recovery_20261004/r25_proposal/sampler_schedule.json",
+  "sampler_schedule_sha256": "190607950ccfceb32ea6f97062b1af029583d9183f8486d0b8bc273f343667d6",
+  "sampler": {
+    "seed": 20260922,
+    "epochs": 6,
+    "samples_per_epoch": 512,
+    "pool_choice_probability": {
+      "HBB_OOF_prompt": 0.6,
+      "consensus_GT": 0.4
+    },
+    "realized_draws": {
+      "HBB_OOF_prompt": 1801,
+      "consensus_GT": 1271
+    },
+    "unique_source_records": 2831,
+    "sampling_weights": "existing R25 min(3,sqrt bbox aspect) weights",
+    "augment_rng_seed": 20260923,
+    "paired_arms_use_same_schedule_and_augmentation_rng": true,
+    "images_train_only": true,
+    "positive_and_negative_support": "No separate negative pool in existing R25 recipe; none introduced."
+  },
+  "decoder_support": {
+    "audit": "experiments/route_recovery_20261004/r25_proposal/r25_training_rasterizer_support_preflight.json",
+    "fit_records_with_roi_iou_lt_0p98": 2831,
+    "fit_records_with_changed_512target_pixels": 2831,
+    "median_changed_pixels": 3042,
+    "fixture_audit": "experiments/route_recovery_20261004/r25_proposal/decoder_fixtures.json",
+    "visuals": "experiments/route_recovery_20261004/r25_proposal/r25_decoder_train_fixtures_contact_sheet.png",
+    "all_fixture_checks_passed": true,
+    "exact_member_selection_preserved": true,
+    "RLE_unchanged": true,
+    "source_has_multipolygon_train_records": false,
+    "synthetic_disjoint_multipolygon_fixture_passed": true
+  },
+  "initialization_and_optimization": {
+    "common_initial_checkpoint": "experiments/aspect_refiner_r25_20260922/square_control.pth",
+    "common_initial_sha256": "a6959e9208786595b1d4b3d43041202b778bcd7af22296079cd1a6835dfb90ae",
+    "both_arms_start_from_same_a695_primary": true,
+    "epochs": 6,
+    "batch_size": 1,
+    "gradient_accumulation": 4,
+    "optimizer": "AdamW, weight decay 1e-4",
+    "decoder_learning_rate": 3E-05,
+    "encoder_layer4_learning_rate": 3E-06,
+    "encoder_freeze": "All encoder parameters frozen except layer4; BatchNorm affine parameters frozen and BatchNorm modules held eval; verify other encoder tensors bitwise unchanged.",
+    "loss": "src.losses.build_loss(iou_bce)",
+    "checkpoint": "fixed epoch 6; no validation-selected epoch; per-epoch atomic checkpoint includes model, optimizer, scaler, schedule position, and RNG state"
+  },
+  "arms": {
+    "control": "6-epoch continuation from a695 using exact existing cv2 decode_consensus_mask",
+    "candidate": "same six-epoch continuation, only COCO polygon rasterizer changed"
+  },
+  "inference_and_fixed_r25_components": {
+    "detector_sha256": "375d2ab601ccbfce11145e8a80cb5b9a2a1bc032b316de7f7cd5b7cfb39f518a",
+    "shape_sha256": "80fed5b5c2f413217f8ff4031e33c106f28d5fa9d4b36b9756cb147c90d995a7",
+    "r22_sha256": "5589887a00ca35380517e3b24548fc4b5f0e388e7cda3d788c45ecfaae1b8779",
+    "base_submission_sha256": "f24bf525cbb196807d98beb8efb3363baa97f72bc5a4ce1625189b0d4350ef35",
+    "validation_obb_confirmation_sha256": "ca13a0c0d0bd906c8fdd4e1ca46bfe0d72e217f4bb0c9dac0a5d355d23d9dd1f",
+    "validation_obb_extras_sha256": "69686134fd8439d2a8329c8a3b817e1d9b55aa8b3f5174e2645ced66f5cf2420",
+    "test_obb_confirmation_sha256": "48869c134a2f03a52489594b944a4c8ed70f9e26cb039626c46279019568c546",
+    "test_obb_extras_sha256": "10ce194b6643de3e9b476f8edb03326e4af41eb14961f63eb8e01aee6e9b93d3",
+    "validation_detector_boxes_sha256": "1749244938de4fc01e4890b53292c2cc9e67747f51f74618e42704fdd34c4149",
+    "inference_options": {
+      "crop_pad": 0.5,
+      "batch_size": 12,
+      "shape_weight": 0.2,
+      "mask_threshold": 0.45,
+      "min_area": 120,
+      "mask_nms_iou": 0.12,
+      "confirm_iou": 0.1,
+      "unmatched_min_area": 3000,
+      "extra_match_iou": 0.1,
+      "extra_min_area": 500,
+      "score_mode": "detector",
+      "r22_strength": 1.0,
+      "detector_sizes": [
+        1024,
+        1280
+      ],
+      "detector_conf": 0.22,
+      "detector_iou": 0.45
+    }
+  },
+  "validation": {
+    "images": 141,
+    "metric": "Official COCO frPyObjects/merge raw annotation records, all-hit IoU>0.5 pooled PQ",
+    "frozen_original_fullroute_coco_baseline": {
+      "status": "rescored_official_COCO",
+      "images": 141,
+      "predictions": 399,
+      "raw_annotation_records": 230,
+      "iou_sum": 289.77010829868505,
+      "tp": 433,
+      "fp": 222,
+      "fn": 244,
+      "pq": 0.4350902527007283,
+      "old_r25_reported_pq_cv2": 0.45438477432763613,
+      "old_report_metric_not_comparable": "Original validation used cv2 polygon GT decoding; this is separately rescored COCO baseline.",
+      "valpred_sha256": "799fa025f604eb0f660bf8b44e7129f208d75956959dd12954900300aed2cb5c"
+    },
+    "comparison": "candidate vs matched cv2 continuation and frozen original R25 full-route masks rescored with COCO",
+    "bootstrap": {
+      "method": "date-cluster paired bootstrap",
+      "replicates": 3000,
+      "seed": 40404
+    },
+    "gate": {
+      "candidate_minus_control_pq_min": 0.002,
+      "candidate_control_ci95_lower_gt": 0,
+      "candidate_tp_at_least_original_baseline": 433,
+      "fp_increase_max_fraction_vs_original_baseline": 0.05,
+      "candidate_fullroute_pq_at_least_original_coco_baseline": true
+    },
+    "exposure": "R25 validation was reused. R22 has 141 val IDs exactly overlapping; R22 train453 has zero overlap; R25 detector best checkpoint was validation-selected; shape checkpoint has no embedded train list; OBB CSVs are frozen reused development predictions. This is exposed validation, not OOF."
+  },
+  "test_output": {
+    "test_images": {
+      "count": 180,
+      "images": [
+        {
+          "file_name": "20110120105534Ch.jpeg",
+          "size_bytes": 784000,
+          "sha256": "7190e95661c142b194c3d2afddfedfee3382c2b3ded2f2f1b023d13e3bd58baf"
+        },
+        {
+          "file_name": "20110130110334Ch.jpeg",
+          "size_bytes": 709996,
+          "sha256": "e4771f4bf1efddaeb474a8e7772e3cbe1973894dac12179966cd4452fed4d60e"
+        },
+        {
+          "file_name": "20110214175414Mh.jpeg",
+          "size_bytes": 685363,
+          "sha256": "5e9fb3883b52aa388d22a0990e0fb819d054417e18dda08f8046a783667cd956"
+        },
+        {
+          "file_name": "20110329082654Uh.jpeg",
+          "size_bytes": 829454,
+          "sha256": "1992c5a7b87fd18282c33f4fd61414f6ee55ba552f6cbfd9cf99b2cc02c70adb"
+        },
+        {
+          "file_name": "20110408083214Th.jpeg",
+          "size_bytes": 754470,
+          "sha256": "5a94fac066dd9067462e5278be701445c2d61668c42b3442bcca050949467722"
+        },
+        {
+          "file_name": "20110424064534Lh.jpeg",
+          "size_bytes": 754193,
+          "sha256": "6a2fff8874915fb873ac0a6b726da9006770dc06bbbe6ae6b032057b3aeb3a98"
+        },
+        {
+          "file_name": "20110429120534Ch.jpeg",
+          "size_bytes": 833628,
+          "sha256": "6bc7358aaf22c17c05079e28f5a59c76288be4bac9f217a1f6156a85f8052317"
+        },
+        {
+          "file_name": "20110529063154Uh.jpeg",
+          "size_bytes": 753890,
+          "sha256": "d0520ae5f14678f745b87d45e6777aba0fd20d140dedf8bcfe66c54ab35ed216"
+        },
+        {
+          "file_name": "20110531070514Th.jpeg",
+          "size_bytes": 857913,
+          "sha256": "bf51da80a2b7c2ef81643487b091c5e534a1a538b0c3865c326d4f37dc2c1e4e"
+        },
+        {
+          "file_name": "20110603123034Ch.jpeg",
+          "size_bytes": 859780,
+          "sha256": "d6a3244422b43ec4cb6c3f1d3866c6dc0304ac85d97a54f0b4d3a6c98005cc3f"
+        },
+        {
+          "file_name": "20110706164014Mh.jpeg",
+          "size_bytes": 819952,
+          "sha256": "b4460ab5ae3d13c01851dd81e03fe05c4b46fe0a9ba59ba59b0051805f964938"
+        },
+        {
+          "file_name": "20110811121534Ch.jpeg",
+          "size_bytes": 856145,
+          "sha256": "e893c482e224f8da1ca8b81d2ce1b284b4cc0bdd3c4ecc1c7ba24f1a562bf4f4"
+        },
+        {
+          "file_name": "20110819131834Ch.jpeg",
+          "size_bytes": 798256,
+          "sha256": "97f7dc2cce5ffc4961be0eea439692e5de103482ecfa6be658b742bd8e7e1159"
+        },
+        {
+          "file_name": "20110827141254Bh.jpeg",
+          "size_bytes": 849900,
+          "sha256": "9638acd0e7b1131393f45b616a1fbc2597f8a9e2703d72a0b84564149776e0bb"
+        },
+        {
+          "file_name": "20110912142254Bh.jpeg",
+          "size_bytes": 796044,
+          "sha256": "1501d689d07559cfa4bacf4758522e6a1ea55f62c18ab8b17e849ab1c8347e3e"
+        },
+        {
+          "file_name": "20111015063134Lh.jpeg",
+          "size_bytes": 829145,
+          "sha256": "45780ac25b62413af42f5ce687ad4fba6bca366d13e1672e48c2e11b0912e7d8"
+        },
+        {
+          "file_name": "20111017113714Th.jpeg",
+          "size_bytes": 750713,
+          "sha256": "2d3a4f0af264807de4c7381fede5bfbd20f3b388666dfa6c7b2f229bcf52387d"
+        },
+        {
+          "file_name": "20111114063134Lh.jpeg",
+          "size_bytes": 822916,
+          "sha256": "9933a3419279f6526ce98c1ec5b431c75bdc05b2ee4bd04f32b78e8e0de2a5a5"
+        },
+        {
+          "file_name": "20111122063134Lh.jpeg",
+          "size_bytes": 787163,
+          "sha256": "02f9a57f956f400f12b9de817afd8a3ad90e1a6fa849755f88782f8dd3757fc7"
+        },
+        {
+          "file_name": "20111124153054Bh.jpeg",
+          "size_bytes": 832713,
+          "sha256": "85ee96e13620f77fdaa7663063ecd0634fc1145ae4aa103374978800c774d8fa"
+        },
+        {
+          "file_name": "20111128175514Mh.jpeg",
+          "size_bytes": 756026,
+          "sha256": "f2bb1a93ca35cb804890452dbbc768fc8afd694cf27e171df28bb4418cbb946d"
+        },
+        {
+          "file_name": "20111208173814Mh.jpeg",
+          "size_bytes": 765935,
+          "sha256": "16c0b8c39e1cf3fce0621531ae8fbd5798dfa509bf5d153aa43056f498204fda"
+        },
+        {
+          "file_name": "20111216103234Ch.jpeg",
+          "size_bytes": 903316,
+          "sha256": "ad4778cbf5bb3fdf22df0bf856998e06b18919c655d831c9c32a8198fd1de764"
+        },
+        {
+          "file_name": "20111216174914Mh.jpeg",
+          "size_bytes": 735793,
+          "sha256": "f1bb9680730914b55ea06b57a18ea2f0c107399c1c1471d21419f54eece01f66"
+        },
+        {
+          "file_name": "20120107063134Lh.jpeg",
+          "size_bytes": 763993,
+          "sha256": "73ff8dce6664a6b3c81437589e87bcbda84edb06e6bf66f298e09569ab10a399"
+        },
+        {
+          "file_name": "20120111191454Bh.jpeg",
+          "size_bytes": 773476,
+          "sha256": "829519bebb787ffad8fa8777a677731b6be1b0e8826e2eeee117955547f51d40"
+        },
+        {
+          "file_name": "20120115063134Lh.jpeg",
+          "size_bytes": 760293,
+          "sha256": "7886b2fb325f07a1257ec7b4f6c068f0e2ae5f68c2b613f676a02299a3e3bf93"
+        },
+        {
+          "file_name": "20120218152654Bh.jpeg",
+          "size_bytes": 765873,
+          "sha256": "5f0da46295f88b15d15854d3d836668a8162ad4e4f9435a9327a0f6e133d60e8"
+        },
+        {
+          "file_name": "20120402105814Th.jpeg",
+          "size_bytes": 948163,
+          "sha256": "1d2ca2cd7e5b20e5b9bfe0394bd9bde15bb78138b1bf09f0475bdd25278e9483"
+        },
+        {
+          "file_name": "20120402164214Mh.jpeg",
+          "size_bytes": 763461,
+          "sha256": "06ec7378d60a50b4e42fad9d68dae61c9dae7a06ffb44f589cec2a68de786a98"
+        },
+        {
+          "file_name": "20120405130014Th.jpeg",
+          "size_bytes": 1036529,
+          "sha256": "0b4b6fad89fc92f634a33312fb8683a59fa92ccf2c6ae8e71b2772f401a43e77"
+        },
+        {
+          "file_name": "20120512063234Lh.jpeg",
+          "size_bytes": 748637,
+          "sha256": "782a805f9ed09c7cde4170567da04a6241b4cddd88579c7fc8dfb5d98849f291"
+        },
+        {
+          "file_name": "20120528063154Uh.jpeg",
+          "size_bytes": 803270,
+          "sha256": "3e1d7176853fbb7ec1cc092f098292de51d37d8a42c5b8b8aeeb1fe42b078194"
+        },
+        {
+          "file_name": "20120606063154Uh.jpeg",
+          "size_bytes": 726685,
+          "sha256": "a84aadbd32cb3a7f819947e82f7b73360ad855273bc3ceda05c442f8987a9807"
+        },
+        {
+          "file_name": "20120622063154Uh.jpeg",
+          "size_bytes": 794971,
+          "sha256": "68472c1c053d2643127d1698df5a18d263beed7558f5c8c6990eb85b4d2ffa13"
+        },
+        {
+          "file_name": "20120707070914Th.jpeg",
+          "size_bytes": 826457,
+          "sha256": "e0916bb7aa46824200041df70bebb50840aad7192186b828cb9c03b495046fac"
+        },
+        {
+          "file_name": "20120710063134Lh.jpeg",
+          "size_bytes": 783031,
+          "sha256": "46289afc8d32e6ffc1e5fe25201da99ea85dec5b41506a646b1bf92652ad9658"
+        },
+        {
+          "file_name": "20120730072014Th.jpeg",
+          "size_bytes": 851867,
+          "sha256": "d42096762753ec568611a07e30374260702c2b4845843f226ed2052db85f0ef4"
+        },
+        {
+          "file_name": "20120813063134Lh.jpeg",
+          "size_bytes": 781266,
+          "sha256": "eea46941d81c78739366a86156ca31f52bd4edd2df0511286f7654310ec8db7d"
+        },
+        {
+          "file_name": "20120930063534Lh.jpeg",
+          "size_bytes": 778870,
+          "sha256": "c2858e3930a75b0d5bd51e2e152a41db919afed89107de1875a5128d5e4daaeb"
+        },
+        {
+          "file_name": "20121024073354Uh.jpeg",
+          "size_bytes": 900062,
+          "sha256": "3dfa09a18b5d1afc7d9716b856aee5758c7f135b4d8aed9f341ae0e76d5831c1"
+        },
+        {
+          "file_name": "20121125063154Uh.jpeg",
+          "size_bytes": 817211,
+          "sha256": "6100750cdbf02c91a747feb57e0d32a857c0c7c365e0ada222fab487fcc7157f"
+        },
+        {
+          "file_name": "20121203063334Lh.jpeg",
+          "size_bytes": 741826,
+          "sha256": "48fdefdb58cda9a9565f291108d42a6a7e553b08f117a3d2b7a1f559ec36cb9f"
+        },
+        {
+          "file_name": "20121206063154Uh.jpeg",
+          "size_bytes": 733582,
+          "sha256": "e0a2e07dd390d4ee90c8e11c69d15ede0f94c825fa15cecdf2674112f7e5e87a"
+        },
+        {
+          "file_name": "20121216154954Bh.jpeg",
+          "size_bytes": 762394,
+          "sha256": "be422806d072e579a328395249747cefbc757c38d2ab4a26e0b257c4ae4c10b6"
+        },
+        {
+          "file_name": "20121220110614Th.jpeg",
+          "size_bytes": 784065,
+          "sha256": "931cdc6e18af894dd2f4f68e5eae8b7507ebd6adb3d3a2a3423ed79f721999fb"
+        },
+        {
+          "file_name": "20121229085414Th.jpeg",
+          "size_bytes": 891269,
+          "sha256": "ca0484d5316a7c08decdc43031d63633c1f8d4f776571a627a0723f80f3917ce"
+        },
+        {
+          "file_name": "20130104104234Ch.jpeg",
+          "size_bytes": 762562,
+          "sha256": "a03daa6d8a9d583c4a503c852f93e7036fdda3205030d6deb2010e20858507e7"
+        },
+        {
+          "file_name": "20130110085614Th.jpeg",
+          "size_bytes": 836527,
+          "sha256": "8506cf33525b03b1469cead76adc03c79f8280fdbe0f3a0136bb312200a8b333"
+        },
+        {
+          "file_name": "20130206063154Uh.jpeg",
+          "size_bytes": 781542,
+          "sha256": "ca1c8ade20125606080e70c99da93a4e6e9dc4f02f644e2fde43d400d52f88da"
+        },
+        {
+          "file_name": "20130208063134Lh.jpeg",
+          "size_bytes": 788348,
+          "sha256": "2d512e9570c571f6e89a99052371a1b24da890f1da889f75a13906b70b6aeb3e"
+        },
+        {
+          "file_name": "20130213063454Uh.jpeg",
+          "size_bytes": 696599,
+          "sha256": "65214700b2006e947d2ef09ae497ec3e5f7eff8f765ae47e62835ea190b40013"
+        },
+        {
+          "file_name": "20130310063154Uh.jpeg",
+          "size_bytes": 828593,
+          "sha256": "d6bba16f11a7115f78746e7d6adf266049edc4bf9c2b2220b4e2aa2c5a50cb46"
+        },
+        {
+          "file_name": "20130315063154Uh.jpeg",
+          "size_bytes": 777277,
+          "sha256": "650e20d39e80d283e68dafcc41f4b4f44e87b3269e2436cb086e756b9f3ef40e"
+        },
+        {
+          "file_name": "20130328063154Uh.jpeg",
+          "size_bytes": 773088,
+          "sha256": "e4b2071187f1bf1e8fe7457d81e6c7bdc3839e48d46d254a5aaf2761628f72d6"
+        },
+        {
+          "file_name": "20130521063134Lh.jpeg",
+          "size_bytes": 782118,
+          "sha256": "f4452563e5d891735868c60a86e9c61d6f222d603c971ab81d2052d0ef83ac42"
+        },
+        {
+          "file_name": "20130526063134Lh.jpeg",
+          "size_bytes": 798061,
+          "sha256": "84da94ba663e252ef957cbfd6fd4b0da5619340c47fe72ebbe74a383e247b11b"
+        },
+        {
+          "file_name": "20130530133654Bh.jpeg",
+          "size_bytes": 813675,
+          "sha256": "904feec5af929204776ff5766d0077aab2f3ef3b2164cd9a751bc9069390f0bf"
+        },
+        {
+          "file_name": "20130603063154Uh.jpeg",
+          "size_bytes": 765800,
+          "sha256": "03f7e41a89987cb1762eef5670bb74d53e436331e694f00bf28ef9a374065ba7"
+        },
+        {
+          "file_name": "20130606133454Bh.jpeg",
+          "size_bytes": 839998,
+          "sha256": "ac99bd6335dfc523ee5177fa605db5b179a985c5108bdb0dc244ef24d47a6279"
+        },
+        {
+          "file_name": "20130609133454Bh.jpeg",
+          "size_bytes": 794508,
+          "sha256": "87ad0f5b1dd37d1980a1c023eb1ebdc1db143c3885659b9777c546b93c122edb"
+        },
+        {
+          "file_name": "20130627063134Lh.jpeg",
+          "size_bytes": 848707,
+          "sha256": "f607d1232da126374b48cedddaddadc5c1886f44d9035114eba641844f6362d9"
+        },
+        {
+          "file_name": "20130702070714Th.jpeg",
+          "size_bytes": 827937,
+          "sha256": "c305870e6256de9c8e096d02c9bb686a93b3bbd4a5b48d8078a17ca7d7809d46"
+        },
+        {
+          "file_name": "20130811121434Ch.jpeg",
+          "size_bytes": 803377,
+          "sha256": "c2b44af6e2944be7846f0e304509c41faa34259d35ae87376eb7a54dd5723c76"
+        },
+        {
+          "file_name": "20130825141154Bh.jpeg",
+          "size_bytes": 788309,
+          "sha256": "aecad2548513fb0643c45997f1e30d2a9527bf4f7311fbde47d106f6275d0464"
+        },
+        {
+          "file_name": "20131027185354Bh.jpeg",
+          "size_bytes": 903555,
+          "sha256": "3db26248c0a09ebdbb891cf42539db972004f3e4ef68ed962c95d0064bae04d8"
+        },
+        {
+          "file_name": "20131027223034Lh.jpeg",
+          "size_bytes": 766254,
+          "sha256": "b046332d049e86c06af9de015cab7591010d87caf78b0b599a626718eff6f7a2"
+        },
+        {
+          "file_name": "20131110185354Bh.jpeg",
+          "size_bytes": 813122,
+          "sha256": "0535ba2aa4e7051c8c261e09f5402dda69c95a04c8bb9e0ae81bb4bbd778788b"
+        },
+        {
+          "file_name": "20131217192134Ch.jpeg",
+          "size_bytes": 787791,
+          "sha256": "4cd1b45f9443310e55b9be150c73e1fab68d10680940ca8781b02773512be916"
+        },
+        {
+          "file_name": "20131230192154Bh.jpeg",
+          "size_bytes": 820493,
+          "sha256": "a23dc7ba6e914254907399358f8e2e8e95ea50dfcdf9c31f316422889f22bd26"
+        },
+        {
+          "file_name": "20140118180214Mh.jpeg",
+          "size_bytes": 774756,
+          "sha256": "7b65164e04b14275df68b8a32e53c4a4f5a61e6a11538f54faca64a45b024508"
+        },
+        {
+          "file_name": "20140309170314Mh.jpeg",
+          "size_bytes": 1105945,
+          "sha256": "e1fa77ba2f60d290ed71175299d13bb41fc761c82b6e6d5a2ac38e0bdfcfaa0b"
+        },
+        {
+          "file_name": "20140322200714Mh.jpeg",
+          "size_bytes": 859775,
+          "sha256": "ea5fb32bc54abf70f7bda50c855e5c371dc9cdcc4526878feb39c111fc68c689"
+        },
+        {
+          "file_name": "20140403081714Th.jpeg",
+          "size_bytes": 804068,
+          "sha256": "43975a80112295a73af7273757bcc7b973f877e940f7dc46dd73030779c68643"
+        },
+        {
+          "file_name": "20140410195814Mh.jpeg",
+          "size_bytes": 784368,
+          "sha256": "fd70120be90a619d47a9cc81beae540244906beb8657ca5ffc3568839f69844e"
+        },
+        {
+          "file_name": "20140420195854Bh.jpeg",
+          "size_bytes": 825071,
+          "sha256": "e92633ee72b3ebd8b57c8eea99579739269db8a24746d66d9d566a806fda2e32"
+        },
+        {
+          "file_name": "20140514195854Bh.jpeg",
+          "size_bytes": 807044,
+          "sha256": "6574a7bd7dd1d35ccdc49897f82c2a5a2f09c678aed636966859543c7943b1ad"
+        },
+        {
+          "file_name": "20140516234034Lh.jpeg",
+          "size_bytes": 741352,
+          "sha256": "17e4d85db49340b62a0c41b4e5f57b9bac23e0bc26c52b48a394c2372851048b"
+        },
+        {
+          "file_name": "20140519195834Ch.jpeg",
+          "size_bytes": 800234,
+          "sha256": "5e44c0f01be4e46891d900d50e0b00a170e9cb76814db7e8954cda9851205320"
+        },
+        {
+          "file_name": "20140520200054Bh.jpeg",
+          "size_bytes": 801316,
+          "sha256": "b258f21a0ec88d54f71bbeb0ee66502898349948410a35865164bee056761c1d"
+        },
+        {
+          "file_name": "20140526195834Ch.jpeg",
+          "size_bytes": 772336,
+          "sha256": "c2bcebd253c52addb7d64cf32320c22558dcd230d0d785c35ba40e0fd3eca350"
+        },
+        {
+          "file_name": "20140629195814Mh.jpeg",
+          "size_bytes": 826562,
+          "sha256": "eb7f5b14d6cb0b11fb685a6e88cfe2e2bfaaf769715861c3c9478c8838dc2b0f"
+        },
+        {
+          "file_name": "20140707023654Uh.jpeg",
+          "size_bytes": 789987,
+          "sha256": "af2dd528f43f9689ec55d5f42f5cc6ac311d7f5f3ad26ccc124ac6a7c23661da"
+        },
+        {
+          "file_name": "20140710020754Uh.jpeg",
+          "size_bytes": 917806,
+          "sha256": "da71f5c952c1aa4841ade0355bd9dd35733645384769f5b1bd9b51439e7566a7"
+        },
+        {
+          "file_name": "20140828080414Th.jpeg",
+          "size_bytes": 848995,
+          "sha256": "d9dd1a1ab8bf90cbb64205e6b7826c6bd2b4a63863e245fc3b29ed13e82cc590"
+        },
+        {
+          "file_name": "20140907195814Mh.jpeg",
+          "size_bytes": 798942,
+          "sha256": "a8f4810ac1745b866396f4e616ab1d9668362afe4e8fb7a29fb45a65a8f4d592"
+        },
+        {
+          "file_name": "20140925195834Ch.jpeg",
+          "size_bytes": 816288,
+          "sha256": "ee3fa37a0f03f0123c7ae89679cfd631c425ee6281ca2c531f173ce09dcd5ada"
+        },
+        {
+          "file_name": "20141009195814Mh.jpeg",
+          "size_bytes": 808400,
+          "sha256": "34b375189a4eb7fd2941932132c7891e2fbb2db293c69cf10be9e0b7359ab813"
+        },
+        {
+          "file_name": "20141104195854Bh.jpeg",
+          "size_bytes": 815672,
+          "sha256": "47af393fdc47f8326c60d4112d083f82cfde3d85fddbdc80abc0d7d6ed1a3573"
+        },
+        {
+          "file_name": "20141120195834Ch.jpeg",
+          "size_bytes": 773100,
+          "sha256": "3d70e6aab13b5d1fb421872a5d9360572dff62e3d6cf4a2066ad30aed368c273"
+        },
+        {
+          "file_name": "20141220201934Ch.jpeg",
+          "size_bytes": 717881,
+          "sha256": "71fbf7c87986f7aec1ca9cc079b4ff7adb6e538417de2ec2ff082ebfd76ea85e"
+        },
+        {
+          "file_name": "20141222201814Mh.jpeg",
+          "size_bytes": 772156,
+          "sha256": "cde735678e1cdd9d2f010bb49454390d9346242ef6a3651794c6f4a29804853d"
+        },
+        {
+          "file_name": "20150105104334Ch.jpeg",
+          "size_bytes": 840128,
+          "sha256": "e1912acd74204224c18c096b6629356a8f8bef911999f305c7ae986fe889971c"
+        },
+        {
+          "file_name": "20150124081954Uh.jpeg",
+          "size_bytes": 785686,
+          "sha256": "a956777af1baf6fbb3f0e74ee4acdf9da195c3d57e4d7a58af0d82cea9509740"
+        },
+        {
+          "file_name": "20150430082014Th.jpeg",
+          "size_bytes": 829698,
+          "sha256": "ddddd9b5412f26d8ccec09e8f31aacc460d29a79378560ab47f6190b04717b9e"
+        },
+        {
+          "file_name": "20150601122834Ch.jpeg",
+          "size_bytes": 804838,
+          "sha256": "66ae999ed1a4d4d5ea0e6d06586e3b08d574da818a887a789de2f0c0cc139537"
+        },
+        {
+          "file_name": "20150602122934Ch.jpeg",
+          "size_bytes": 818761,
+          "sha256": "9b29e118ddd49cbac7993bc15cbc41ffa9598188c58e5557293e21d0f05def1e"
+        },
+        {
+          "file_name": "20150619133554Bh.jpeg",
+          "size_bytes": 685249,
+          "sha256": "80072d31f6187d8bec394f5b6dab47b2c604663a1294efb720101fec86139e5c"
+        },
+        {
+          "file_name": "20150620161314Mh.jpeg",
+          "size_bytes": 783360,
+          "sha256": "2542a6b3cd5c4aa7d718b6e8c4b159518f32f1db3b9a4e2951c18e9a55b4d159"
+        },
+        {
+          "file_name": "20150623152934Ch.jpeg",
+          "size_bytes": 739711,
+          "sha256": "798174773faccea35c0f936c3c85607ce57245fec266459535bed88f8d509bf5"
+        },
+        {
+          "file_name": "20150913082034Lh.jpeg",
+          "size_bytes": 787867,
+          "sha256": "a48ed8ba9e2678cdad6549674ebf8d030791ba5fea93b9d79d546338474ddc88"
+        },
+        {
+          "file_name": "20151003081954Uh.jpeg",
+          "size_bytes": 739241,
+          "sha256": "e565b290c9638182f11b91883b3545cde1893f7bd10ad01d152dccb7e6d54331"
+        },
+        {
+          "file_name": "20151015170634Ch.jpeg",
+          "size_bytes": 896751,
+          "sha256": "4be78f0fabd6c414de2558c1ca2796133a1e5a7bfdf122bafcc05cc2c2f8e28a"
+        },
+        {
+          "file_name": "20151026171014Mh.jpeg",
+          "size_bytes": 770777,
+          "sha256": "9afe0a77cfe5ada0e3576b01f3d53a86cd4483714a3ae55cb3aa79ccf4cd358f"
+        },
+        {
+          "file_name": "20151117212434Ch.jpeg",
+          "size_bytes": 717589,
+          "sha256": "2e8ab8b7838009d4d0ec9f49e99265145d0471811049342b2bcfb80b92660da0"
+        },
+        {
+          "file_name": "20151204133714Th.jpeg",
+          "size_bytes": 797137,
+          "sha256": "774d9e45c0b3ca54fef2b4ffe46b272cd14d03fd6e49a8409cebd7e46f01dabf"
+        },
+        {
+          "file_name": "20151207173614Mh.jpeg",
+          "size_bytes": 738055,
+          "sha256": "1a09a7072462e047737b9029344434d577d36685be55889aab5efc5a76eec898"
+        },
+        {
+          "file_name": "20151214171854Bh.jpeg",
+          "size_bytes": 742856,
+          "sha256": "6d553112d2924690bf0214d8363552b6b87246d01ed527fea81c6527a62a5eec"
+        },
+        {
+          "file_name": "20151227133734Ch.jpeg",
+          "size_bytes": 853683,
+          "sha256": "8bdb83c67fe7cda9a8f55fe238ab1b455446ae3ae0773104837e135684b19874"
+        },
+        {
+          "file_name": "20160116133734Ch.jpeg",
+          "size_bytes": 780406,
+          "sha256": "6e68ee2ddd2d5328d47356b18c7df6d187fbc2976c8849e5b302f1732a627e69"
+        },
+        {
+          "file_name": "20160226151654Bh.jpeg",
+          "size_bytes": 781282,
+          "sha256": "3cc2f150d810758f2a6975bd124fee91c73a5c521e1aa0bbcedd680a3912dda5"
+        },
+        {
+          "file_name": "20160311020654Uh.jpeg",
+          "size_bytes": 775656,
+          "sha256": "5dbc00fa65e3d1c6d37cce0da3732150500c1a24d5f03cb45498197e70e0e10a"
+        },
+        {
+          "file_name": "20160312020554Uh.jpeg",
+          "size_bytes": 770037,
+          "sha256": "ee798e59f1002ee7e4825593ec277f68d3f846a30b1831be0ad47403598aad32"
+        },
+        {
+          "file_name": "20160327133714Th.jpeg",
+          "size_bytes": 810702,
+          "sha256": "1d54c75bf833dcdb9f67f56c9ca0b90d1276fb805643f431d08079702985fcf1"
+        },
+        {
+          "file_name": "20160327133734Ch.jpeg",
+          "size_bytes": 857877,
+          "sha256": "14157b8f7718b3a465e239bea818c54da2a5bfdf42b7dccc98d07caeb05ccd07"
+        },
+        {
+          "file_name": "20160405014154Uh.jpeg",
+          "size_bytes": 786520,
+          "sha256": "76ec50263dfebddc0fc9e86ee2f1d932a74381dfcf0115cdc33ab6d1906827af"
+        },
+        {
+          "file_name": "20160505025554Uh.jpeg",
+          "size_bytes": 804192,
+          "sha256": "7ca96014829d0ef75ccf1d4f15e3e7d79ab6de4b6a520e752848938c9927d5a1"
+        },
+        {
+          "file_name": "20160513133714Th.jpeg",
+          "size_bytes": 769325,
+          "sha256": "f41d6b8dafd62fd09f23335f7f82f897087ac684cb1747ded2e39018f7a0cfae"
+        },
+        {
+          "file_name": "20160602010754Uh.jpeg",
+          "size_bytes": 765121,
+          "sha256": "bb24a0daa12285df43a11a212b5f723c086f60e4e18fdc3082d7918c2249577b"
+        },
+        {
+          "file_name": "20160713133714Th.jpeg",
+          "size_bytes": 780002,
+          "sha256": "c47678d2c62134bc4c6aa8904f41e9d22a65f8c0944afd6101a821ef4aea14ea"
+        },
+        {
+          "file_name": "20160820233134Lh.jpeg",
+          "size_bytes": 795818,
+          "sha256": "7884d59cf666febfa3db682186900b3f1baa12714e6bf96f69188ba639c64496"
+        },
+        {
+          "file_name": "20160828133734Ch.jpeg",
+          "size_bytes": 735794,
+          "sha256": "fcf42729c0c387ac8d821863bbb8fabae1cab2c9d8979756445292b04801a5b5"
+        },
+        {
+          "file_name": "20160930165914Mh.jpeg",
+          "size_bytes": 739573,
+          "sha256": "f3d1e1a1b003150a3e56da82eeea00144e81f5205d258ae4bc5112449bf24e6a"
+        },
+        {
+          "file_name": "20161015144954Bh.jpeg",
+          "size_bytes": 757654,
+          "sha256": "299325d8c498c0585dd27672d29cc94470ed85436f1c0170e05c2bd0ce222b6d"
+        },
+        {
+          "file_name": "20161019133714Th.jpeg",
+          "size_bytes": 750582,
+          "sha256": "f587845ddabd2282ea1e1ef226b1104584230be358d27b0aa2d26a0bc87c22c9"
+        },
+        {
+          "file_name": "20161020145454Bh.jpeg",
+          "size_bytes": 796894,
+          "sha256": "fafd9e624d913646a0bdabbbf15d60bf353ee291ff99495970acecde1fdba858"
+        },
+        {
+          "file_name": "20161104133714Th.jpeg",
+          "size_bytes": 814111,
+          "sha256": "119f7bfbced7bcbc1b3dc6bb244ef3e2776607dc176345d1b778ae5cc189c454"
+        },
+        {
+          "file_name": "20161111133734Ch.jpeg",
+          "size_bytes": 879065,
+          "sha256": "b0c88ce71217c08ee764238868140a61cbf5dbefb903fbd059e03d2219210e5d"
+        },
+        {
+          "file_name": "20161116222134Lh.jpeg",
+          "size_bytes": 803862,
+          "sha256": "7b09231eea429182c34706fd57b79e7809a1d8ca72e63ea30d4246d415f080b2"
+        },
+        {
+          "file_name": "20161219133734Ch.jpeg",
+          "size_bytes": 848396,
+          "sha256": "a0b6ff686f8a0712238b4f4ee9973866f815f3d3a2bd976f1ecf40be31d1ef1d"
+        },
+        {
+          "file_name": "20161231223534Lh.jpeg",
+          "size_bytes": 775595,
+          "sha256": "67fd8f3cb1a6c4ca676133128960472f8c453bbfd1a826ede1956dd3c617f404"
+        },
+        {
+          "file_name": "20170129133714Th.jpeg",
+          "size_bytes": 760090,
+          "sha256": "8eea4eebcd1f8de9d2abd135b5ba40c9dfc4b1f860dc1068d5c7ad3b57fad350"
+        },
+        {
+          "file_name": "20170313145450Bh.jpeg",
+          "size_bytes": 876101,
+          "sha256": "c6f8e1f0f7d2e0273b6140c2ba9c06039ceb711b450d11b0b4450182b1e86b87"
+        },
+        {
+          "file_name": "20170326133730Ch.jpeg",
+          "size_bytes": 848074,
+          "sha256": "2b02a458aa6b49f4999568785273bcfad8849636936d885318a7275bd4cde314"
+        },
+        {
+          "file_name": "20170328014950Uh.jpeg",
+          "size_bytes": 740704,
+          "sha256": "b8ec0ce30cad57a6740c995b030ac2aa7e19f94c60625f64d550647c831ab915"
+        },
+        {
+          "file_name": "20170329014850Uh.jpeg",
+          "size_bytes": 744922,
+          "sha256": "407fc31679e2cdb8041f0d47c88975d967da7bf82fe9b7ce812d0bc1cf033916"
+        },
+        {
+          "file_name": "20170330133710Th.jpeg",
+          "size_bytes": 768623,
+          "sha256": "bcb59104265aebf60d29e6b334fb5e0bf35d7a5c93f30717601dd4e46dade08d"
+        },
+        {
+          "file_name": "20170414151450Bh.jpeg",
+          "size_bytes": 576038,
+          "sha256": "817461bf5b919821c616c91f60bd2b57e9ac0ff1f0dd2ddefc94a63a4e2f6366"
+        },
+        {
+          "file_name": "20170516134450Bh.jpeg",
+          "size_bytes": 750657,
+          "sha256": "5a376760aeaf54526f244accaad2f39bf3bf9783ba0f109d095d742af6803c55"
+        },
+        {
+          "file_name": "20170626133730Ch.jpeg",
+          "size_bytes": 839949,
+          "sha256": "6cee27b076e7b105124067d8e9fe1d39e20e5bb6c4c0c174733cfd0fca5cb087"
+        },
+        {
+          "file_name": "20170708164010Mh.jpeg",
+          "size_bytes": 803143,
+          "sha256": "68e48fe70f75f159c7eb50114d4a502520547df3705349cefad6452dace36618"
+        },
+        {
+          "file_name": "20170902231930Lh.jpeg",
+          "size_bytes": 782288,
+          "sha256": "75bc6c5b2b605afe7b456c300289554409438a6d6436c45b0d40e2790e950fb7"
+        },
+        {
+          "file_name": "20170926225530Lh.jpeg",
+          "size_bytes": 925014,
+          "sha256": "9e6cd25b08e42ba83aba18716ac49034015421807fb6c44ae554212e73a2ea70"
+        },
+        {
+          "file_name": "20171018223630Lh.jpeg",
+          "size_bytes": 779900,
+          "sha256": "51f27ddaf712cd50cc705334ac9dedeb76e0a61f4869aae240ce69ddf079a6e7"
+        },
+        {
+          "file_name": "20171021223430Lh.jpeg",
+          "size_bytes": 817075,
+          "sha256": "c93139f2b13e2507e68133b73940d2575a337f1fb8c81e019bf3528a1b917127"
+        },
+        {
+          "file_name": "20171027150050Bh.jpeg",
+          "size_bytes": 751426,
+          "sha256": "d0b2543e80339c8ea4878c06c437b7a5f424cc3c4a7228f81eef4301d1a25f95"
+        },
+        {
+          "file_name": "20171029171010Mh.jpeg",
+          "size_bytes": 822792,
+          "sha256": "93922c59edc70423fb547d910e994082902039d1de29b9508b9ef32e14698b60"
+        },
+        {
+          "file_name": "20171107222630Lh.jpeg",
+          "size_bytes": 893190,
+          "sha256": "7ed37cfddf19b99b9f2561aac6db21cfaa898cd97618a8fd0b7175d68abc608f"
+        },
+        {
+          "file_name": "20171108222430Lh.jpeg",
+          "size_bytes": 865062,
+          "sha256": "8d30cd165521366c5de28b1d6503bc0c33c3193bbf4e9c4b1005615d5d559207"
+        },
+        {
+          "file_name": "20171122022450Uh.jpeg",
+          "size_bytes": 723565,
+          "sha256": "d15ed45b595eb81c9768b48b0b4a555e7c55f288cf69ba6bb9e5cb4f887e27c8"
+        },
+        {
+          "file_name": "20180507140210Th.jpeg",
+          "size_bytes": 737912,
+          "sha256": "134023bf0bbff784577cd329698d68eb9dd3fd4ba665ee630b9ef778fa27dc2e"
+        },
+        {
+          "file_name": "20180726232450Bh.jpeg",
+          "size_bytes": 802218,
+          "sha256": "2ca8cf99a7f0c2e164e286dba09c2478f7c5161070a7393380e69ec084bb60ef"
+        },
+        {
+          "file_name": "20181012105930Ch.jpeg",
+          "size_bytes": 811208,
+          "sha256": "268ab9153af3b902564d611129002b793f1faaa3e0203fd2ca6db604409d3c49"
+        },
+        {
+          "file_name": "20181030230030Lh.jpeg",
+          "size_bytes": 793068,
+          "sha256": "1d33d7ebbe3a61592b3ee3afe2d9bbfad5223d241391a23da849272b15a0e8b3"
+        },
+        {
+          "file_name": "20190605025430Lh.jpeg",
+          "size_bytes": 773947,
+          "sha256": "9963223b43c70f5a9a0eb8db1b8e9c707768b00bffe57024a6e3e6633b9bb1fa"
+        },
+        {
+          "file_name": "20190607032610Mh.jpeg",
+          "size_bytes": 782389,
+          "sha256": "43db8dc959bafc9c945f57a7ce626b610aa407bfb17aaf794ebcd5f8049ac086"
+        },
+        {
+          "file_name": "20200310113230Ch.jpeg",
+          "size_bytes": 891550,
+          "sha256": "eae34802abc8408a1e351551de8197fb0d4e8f55ecd815596cc7fb20f1f681e1"
+        },
+        {
+          "file_name": "20200806072410Th.jpeg",
+          "size_bytes": 775380,
+          "sha256": "b3eb36e3c4084ddf5f3506dc98b7751ebb70036c6fbf46148524389d808eb6a4"
+        },
+        {
+          "file_name": "20201228202510Mh.jpeg",
+          "size_bytes": 809996,
+          "sha256": "b63530f7dde4c25217e709a8e12ae6ba2daf08bcf4b819a2689c0cb785642a06"
+        },
+        {
+          "file_name": "20210101202450Bh.jpeg",
+          "size_bytes": 726977,
+          "sha256": "4c706df8ede616d2ab7347ae906993a635eb512fe25542ee38b29925d7ef259b"
+        },
+        {
+          "file_name": "20210127110130Ch.jpeg",
+          "size_bytes": 844893,
+          "sha256": "da6c07dcd96949dfd3bc36495f4dcbae89db8e10cd410236819eba3e311e8c78"
+        },
+        {
+          "file_name": "20210219230330Lh.jpeg",
+          "size_bytes": 814577,
+          "sha256": "ab4ec248ba25ae9ce679ba9fb4b833836877d3abcfb68391e27e8d63cac64a15"
+        },
+        {
+          "file_name": "20210607142350Bh.jpeg",
+          "size_bytes": 645876,
+          "sha256": "3eebe5f504316a8a1c218246472d51ceb6d9263d8dd5e63e6e52a2c4e09f3d12"
+        },
+        {
+          "file_name": "20210627163630Mh.jpeg",
+          "size_bytes": 802230,
+          "sha256": "7f5546a14a1a1914424e62667186d31da71356dbf5bbb1a477e0d8ae29642fa7"
+        },
+        {
+          "file_name": "20210701163730Mh.jpeg",
+          "size_bytes": 844878,
+          "sha256": "b4fc55668d8d5880064ea6afe41eebbfae52ecce0da2975774d846d8324f6c7b"
+        },
+        {
+          "file_name": "20210708060030Lh.jpeg",
+          "size_bytes": 886876,
+          "sha256": "e066772e047d2940dabd66c38f32e8d1365cffcc605ab3c5b0e6e9575fe82c49"
+        },
+        {
+          "file_name": "20210726041650Uh.jpeg",
+          "size_bytes": 616584,
+          "sha256": "46069bdeca8bebe3980d5dd3db6de7881663de6e34c8eca92727f9cd4b2dbd21"
+        },
+        {
+          "file_name": "20210730044930Lh.jpeg",
+          "size_bytes": 783962,
+          "sha256": "f2de4e1cda6e171a86246ab4e2c9bca1cfd62cd1c06b03593d0590582797c460"
+        },
+        {
+          "file_name": "20210811072510Th.jpeg",
+          "size_bytes": 764171,
+          "sha256": "e6788a38abd0ecc711b38cd3e88862e48203518ad76eb4d0733f48e67a002bf8"
+        },
+        {
+          "file_name": "20211119005210Mh.jpeg",
+          "size_bytes": 757248,
+          "sha256": "beeb21748588d1c0ac3a2f0af851f074461a72add19281c804285894f90c68fb"
+        },
+        {
+          "file_name": "20211214174010Mh.jpeg",
+          "size_bytes": 729298,
+          "sha256": "056ea6a5578465d80bba5e718eedbffca7b34dd9a3a65f7892c293e6f74ea3bf"
+        },
+        {
+          "file_name": "20211224120130Ch.jpeg",
+          "size_bytes": 871083,
+          "sha256": "56f0403e8980dddd685fc4540594b8295ffbdc274cff04e866e2b54678a0e66d"
+        },
+        {
+          "file_name": "20211231180850Bh.jpeg",
+          "size_bytes": 696284,
+          "sha256": "aecabfba40ad12e7710edeba699bb27c464c802774eff2ac35ef688e9d06d769"
+        },
+        {
+          "file_name": "20220124155050Bh.jpeg",
+          "size_bytes": 793476,
+          "sha256": "9e026e8380116529402ed5c2749f7a1df4f12ebbb9b02b81e693b65f32eb57ed"
+        },
+        {
+          "file_name": "20220328035030Lh.jpeg",
+          "size_bytes": 689559,
+          "sha256": "3e5e2c6ea14a20c890ee10a364ab97c335c63992134d54d8d94152589fbd7447"
+        },
+        {
+          "file_name": "20220523234912Lh.jpeg",
+          "size_bytes": 773925,
+          "sha256": "9a17d756001c640410232b9e1333f06055d7899825d7de66b812d9acdb10cdec"
+        },
+        {
+          "file_name": "20220621185332Bh.jpeg",
+          "size_bytes": 724596,
+          "sha256": "eac828c3db604079a8a5d53937c90805e1c85a80c9babc9989fabce73d70669b"
+        },
+        {
+          "file_name": "20220626185332Bh.jpeg",
+          "size_bytes": 745185,
+          "sha256": "f5b3b8bdfa8bdcd931717b20c8e3ee7637a17db5fe2b4533a76e9651f686f4bc"
+        },
+        {
+          "file_name": "20220714185352Th.jpeg",
+          "size_bytes": 761815,
+          "sha256": "c28ea29b868db0191370c28075e9bc2ca8f5ecaa375c57670f4c6bf5535d9768"
+        },
+        {
+          "file_name": "20220728185352Th.jpeg",
+          "size_bytes": 732036,
+          "sha256": "2f2a0ef7b27abeed54c53165b83079ab5ddb846bf357ad6d4cff2f0527b0ab48"
+        }
+      ]
+    },
+    "test_image_manifest_file": "experiments/route_recovery_20261004/r25_proposal/test_image_manifest.json",
+    "test_image_manifest_sha256": "4013db68018f2ce4653a80cd8d55f6e50033c3678cd62f237a6ddced76250a0b",
+    "csv": "submissions/submission_r25_coco_target_20261004.csv",
+    "download": "Downloads/submission_r25_coco_target_20261004.csv",
+    "only_after_gate_pass": true,
+    "full_qa": "180 test images accounted for; parse all RLEs, 2048x2048 dimensions, nonempty masks, unique filament ids, per-image no-overlap, CSV schema and final SHA256; do not upload."
+  },
+  "compute": {
+    "single_gpu_process_at_a_time": true,
+    "max_training_budget_minutes": 15,
+    "estimated_training_minutes": 7,
+    "no_kaggle_upload_or_public_sweep": true
+  },
+  "runner_sha256": "3e886f0bb2fecc3363f610cb44a31aaabe982898f0b67c8c9fb175996b19abde",
+  "amendments": [
+    {
+      "time_local": "2026-10-04 after setup abort",
+      "type": "runner schema lookup",
+      "detail": "First process completed control epoch 1 but stopped before checkpoint: requested missing PRE.optimizer. Corrected lookup to frozen PRE.initialization_and_optimization; both full arms restart from identical original a695 initialization. No metrics/checkpoint retained from aborted process."
+    }
+  ],
+  "repair_amendment": {
+    "only_code_difference": "Arm dispatch predicate corrected; treatment, split, schedule, seed, init, optimizer, augmentations, model budget, validation metric and gates remain unchanged.",
+    "cause": "Control decoder guard compared arm to control, while caller supplies control_cv2. Both arms had therefore selected the COCO branch; fixed predicate to control_cv2. Checkpoint weights and optimizer states were exactly identical. Original run artifacts remain preserved in parent directory.",
+    "prior_run_status": "aborted_invalid_arm_dispatch",
+    "gpu_training_restart": "both full arms restart from same frozen a695 init; discard no original artifacts.",
+    "time_local": "2026-10-04T19:29:56",
+    "id": "repair_01"
+  },
+  "repair_setup_amendment": "Moved repaired runner one directory deeper; project-root resolution updated from parents[3] to parents[4]. No fit samples were processed before this import failure."
+}

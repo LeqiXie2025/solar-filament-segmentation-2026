@@ -1,0 +1,99 @@
+{
+  "status": "decoder_fixtures_pass",
+  "synthetic_coco_eval_fixtures": [
+    {
+      "fixture": 0,
+      "components": 1,
+      "candidate_exact_equal_to_eval_coco": true,
+      "area": 100
+    },
+    {
+      "fixture": 1,
+      "components": 1,
+      "candidate_exact_equal_to_eval_coco": true,
+      "area": 50
+    },
+    {
+      "fixture": 2,
+      "components": 1,
+      "candidate_exact_equal_to_eval_coco": true,
+      "area": 29
+    },
+    {
+      "fixture": 3,
+      "components": 2,
+      "candidate_exact_equal_to_eval_coco": true,
+      "area": 100
+    },
+    {
+      "fixture": "RLE_fallback",
+      "unchanged_exact": true,
+      "area": 50
+    }
+  ],
+  "actual_fit_record_visual_checks": [
+    {
+      "index": 0,
+      "pool": "oof_prompt",
+      "file_name": "20110109104734Ch.jpeg",
+      "ann_id": null,
+      "segmentation_polygon_components": 1,
+      "consensus_member_count": 0,
+      "area_cv2": 2835.0,
+      "area_coco": 2644.0,
+      "changed_512_target_pixels": 1202,
+      "both_nonempty": true
+    },
+    {
+      "index": 1,
+      "pool": "consensus_gt",
+      "file_name": "20110114105034Ch.jpeg",
+      "ann_id": null,
+      "segmentation_polygon_components": 1,
+      "consensus_member_count": 1,
+      "area_cv2": 4654.0,
+      "area_coco": 4125.0,
+      "changed_512_target_pixels": 648,
+      "both_nonempty": true
+    },
+    {
+      "index": 2,
+      "pool": "consensus_gt",
+      "file_name": "20110128174814Mh.jpeg",
+      "ann_id": null,
+      "segmentation_polygon_components": 1,
+      "consensus_member_count": 2,
+      "area_cv2": 2175.0,
+      "area_coco": 1944.0,
+      "changed_512_target_pixels": 2963,
+      "both_nonempty": true
+    },
+    {
+      "index": 3,
+      "pool": "consensus_gt",
+      "file_name": "20110301082654Uh.jpeg",
+      "ann_id": null,
+      "segmentation_polygon_components": 1,
+      "consensus_member_count": 3,
+      "area_cv2": 796.3333740234375,
+      "area_coco": 715.3333129882812,
+      "changed_512_target_pixels": 5870,
+      "both_nonempty": true
+    },
+    {
+      "index": 4,
+      "pool": "consensus_gt",
+      "file_name": "20110123174914Mh.jpeg",
+      "ann_id": null,
+      "segmentation_polygon_components": 1,
+      "consensus_member_count": 1,
+      "area_cv2": 5877.0,
+      "area_coco": 5634.0,
+      "changed_512_target_pixels": 1300,
+      "both_nonempty": true
+    }
+  ],
+  "target_behavior": "cv2 control and COCO candidate average exactly same consensus_segmentations; RLE path unchanged; five real fit records nonempty and differ after unchanged 512 square training ROI.",
+  "visual_contact_sheet": "experiments/route_recovery_20261004/r25_proposal/r25_decoder_train_fixtures_contact_sheet.png",
+  "outer_labels_accessed": false
+}

@@ -1,0 +1,10 @@
+{
+  "id": "R25_coco_target_20261004",
+  "displayed_score": 0.38,
+  "score_source": "user report in chat 2026-10-04, newest delivered candidate contextual identity",
+  "reference_file": "C:/Users/xlq20/Downloads/submission_r25_coco_target_20261004.csv",
+  "reference_sha256": "105668985c949fa330dd1bc22992206ad9e0f70088f67d90e7ea216714fe1a3c",
+  "candidate_checkpoint_sha256": "cf053df4739e8d91504b293e2165b7dbb1c1acd7bf4126087c047689cdcd4162",
+  "submitted_bytes_independently_confirmed": false,
+  "full_model_provenance": "R25 frozen route locally reproduced; legacy shape training IDs and upstream OBB provenance incomplete"
+}

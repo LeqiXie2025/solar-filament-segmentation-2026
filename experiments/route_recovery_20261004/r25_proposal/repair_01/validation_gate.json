@@ -1,0 +1,46 @@
+{
+  "status": "complete",
+  "metric": "COCO raw annotation records, all-hit IoU>0.5 pooled PQ",
+  "images": 141,
+  "dates": 130,
+  "baseline": {
+    "pq": 0.4350902549139372,
+    "tp": 433,
+    "fp": 222,
+    "fn": 244
+  },
+  "control_cv2": {
+    "pq": 0.4342497084987932,
+    "tp": 435,
+    "fp": 222,
+    "fn": 242
+  },
+  "candidate_coco": {
+    "pq": 0.43932983458221136,
+    "tp": 434,
+    "fp": 221,
+    "fn": 243
+  },
+  "candidate_minus_control_pq": 0.005080126083418179,
+  "date_cluster_ci95": [
+    0.00037091463968533256,
+    0.010078327021536698
+  ],
+  "gates": {
+    "candidate_control_delta_min": true,
+    "candidate_control_ci_lower_positive": true,
+    "candidate_tp_at_least_frozen_original": true,
+    "candidate_fp_within_5pct_original": true,
+    "candidate_pq_at_least_original": true
+  },
+  "promote_to_test": true,
+  "validation_exposure": "R25 validation is exposed development, not OOF.",
+  "source_hashes": {
+    "experiments\\route_recovery_20261004\\r25_proposal\\repair_01\\control_cv2_epoch6.pth": "d72e01508ad62760df6c4fb806410fc8af27547bf4a26838f28a96cebb2a9636",
+    "experiments\\route_recovery_20261004\\r25_proposal\\repair_01\\candidate_coco_epoch6.pth": "cf053df4739e8d91504b293e2165b7dbb1c1acd7bf4126087c047689cdcd4162"
+  },
+  "valpred_paths": {
+    "control_cv2": "experiments\\route_recovery_20261004\\r25_proposal\\repair_01\\control_cv2_valpred.csv",
+    "candidate_coco": "experiments\\route_recovery_20261004\\r25_proposal\\repair_01\\candidate_coco_valpred.csv"
+  }
+}

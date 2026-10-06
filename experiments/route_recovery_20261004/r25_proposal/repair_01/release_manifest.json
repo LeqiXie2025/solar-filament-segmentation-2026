@@ -1,0 +1,233 @@
+{
+  "release": "0.38",
+  "branch": "0.38",
+  "source_commit": "9a12e18710caa060573be90058624ddd122e7523",
+  "source_branch": "codex/solar-stable-training",
+  "status": "release files assembled for review; ready to commit",
+  "user_reported_public_score": 0.38,
+  "score_evidence": "User reported in chat on 2026-10-04; no independent Kaggle upload/score verification in this release.",
+  "candidate_checkpoint_sha256": "cf053df4739e8d91504b293e2165b7dbb1c1acd7bf4126087c047689cdcd4162",
+  "candidate_submission_sha256": "105668985c949fa330dd1bc22992206ad9e0f70088f67d90e7ea216714fe1a3c",
+  "historic_validation_gate_status": "Historical frozen gate passed under per-annotator COCO raw-annotation all-hit IoU>0.5 pooled PQ. Unified audit reproduced its per-annotator contract. The 141-image set is exposed development data, not independent OOF.",
+  "validation_exposure": "141 development images, not independent out-of-fold evaluation.",
+  "external_inputs": [
+    {
+      "key": "split_preregistration",
+      "path": "experiments/aspect_refiner_r25_20260922/preregistration.json",
+      "sha256": "c0487ca8630d3ff80c0d2fff758011fbb2ce95886057970d5c38c16698c5cd58",
+      "size_bytes": 22542,
+      "included_in_git": true
+    },
+    {
+      "key": "base_square_primary",
+      "path": "experiments/aspect_refiner_r25_20260922/square_control.pth",
+      "sha256": "a6959e9208786595b1d4b3d43041202b778bcd7af22296079cd1a6835dfb90ae",
+      "size_bytes": 97943703,
+      "included_in_git": false
+    },
+    {
+      "key": "original_r25_training_code",
+      "path": "experiments/aspect_refiner_r25.py",
+      "sha256": "b4a29b9c970cb0ce341aa021c31162747689a3490a3b35e7731b70963479abeb",
+      "size_bytes": 13744,
+      "included_in_git": true
+    },
+    {
+      "key": "r25_export_code",
+      "path": "experiments/export_r25_probe.py",
+      "sha256": "acf64724fff32a97d758e77608c7aa1554398a260963b5169c4e44c1c9bd2e05",
+      "size_bytes": 8522,
+      "included_in_git": true
+    },
+    {
+      "key": "source_oof_proposals",
+      "path": "data/clean/hbb_oof_r4_proposals.json",
+      "sha256": "8760171997b7011b501d2c279c01d77aee6a32099380f03c7c3c170c38dca462",
+      "size_bytes": 29548925,
+      "included_in_git": false
+    },
+    {
+      "key": "source_consensus_annotations",
+      "path": "data/clean/train_annotations_consensus.json",
+      "sha256": "54354d5b6039e0161cf45f8f3cb869490f34900170ef6ad9a3994d5083516ac7",
+      "size_bytes": 25707208,
+      "included_in_git": false
+    },
+    {
+      "key": "raw_evaluation_annotations",
+      "path": "data/raw/train_annotations.json",
+      "sha256": "5da9e92b5a1a1947fd5d57adb6688269625c48ec1ef884daf2a01618c9ed54a1",
+      "size_bytes": 48616700,
+      "included_in_git": false
+    },
+    {
+      "key": "official_r25_detector",
+      "path": "models/yolo/yolo11s_boxes_1280_e25/weights/best.pt",
+      "sha256": "375d2ab601ccbfce11145e8a80cb5b9a2a1bc032b316de7f7cd5b7cfb39f518a",
+      "size_bytes": 19356945,
+      "included_in_git": false
+    },
+    {
+      "key": "r25_shape_refiner",
+      "path": "models/crop_refiner_resnet34_512_consensus_ft.pth",
+      "sha256": "80fed5b5c2f413217f8ff4031e33c106f28d5fa9d4b36b9756cb147c90d995a7",
+      "size_bytes": 97928567,
+      "included_in_git": false
+    },
+    {
+      "key": "r22_corrector",
+      "path": "experiments/mask_correction_r22_20260918/corrector.pth",
+      "sha256": "5589887a00ca35380517e3b24548fc4b5f0e388e7cda3d788c45ecfaae1b8779",
+      "size_bytes": 1591349,
+      "included_in_git": false
+    },
+    {
+      "key": "r25_r22_base_submission",
+      "path": "submissions/submission_obb_gate_extras_pq04502_20260901.csv",
+      "sha256": "f24bf525cbb196807d98beb8efb3363baa97f72bc5a4ce1625189b0d4350ef35",
+      "size_bytes": 351812,
+      "included_in_git": false
+    },
+    {
+      "key": "obb_confirmation_val_csv",
+      "path": "experiments/valpred_obb_refine_tta_c030.csv",
+      "sha256": "ca13a0c0d0bd906c8fdd4e1ca46bfe0d72e217f4bb0c9dac0a5d355d23d9dd1f",
+      "size_bytes": 110131,
+      "included_in_git": false
+    },
+    {
+      "key": "obb_extras_val_csv",
+      "path": "experiments/valpred_obb_refine_tta_c038.csv",
+      "sha256": "69686134fd8439d2a8329c8a3b817e1d9b55aa8b3f5174e2645ced66f5cf2420",
+      "size_bytes": 93616,
+      "included_in_git": false
+    },
+    {
+      "key": "obb_confirmation_test_csv",
+      "path": "submissions/submission_obb_refine_tta_c030.csv",
+      "sha256": "48869c134a2f03a52489594b944a4c8ed70f9e26cb039626c46279019568c546",
+      "size_bytes": 372063,
+      "included_in_git": true
+    },
+    {
+      "key": "obb_extras_test_csv",
+      "path": "submissions/submission_obb_refine_tta_c038.csv",
+      "sha256": "10ce194b6643de3e9b476f8edb03326e4af41eb14961f63eb8e01aee6e9b93d3",
+      "size_bytes": 324086,
+      "included_in_git": true
+    },
+    {
+      "key": "fixed_validation_detector_boxes",
+      "path": "experiments/pipeline_diagnosis_r5/detector_boxes.json",
+      "sha256": "1749244938de4fc01e4890b53292c2cc9e67747f51f74618e42704fdd34c4149",
+      "size_bytes": 268909,
+      "included_in_git": false
+    },
+    {
+      "key": "frozen_r25_original_val_predictions",
+      "path": "experiments/r25_probe_20260924/valpred.csv",
+      "sha256": "799fa025f604eb0f660bf8b44e7129f208d75956959dd12954900300aed2cb5c",
+      "size_bytes": 111843,
+      "included_in_git": false
+    },
+    {
+      "key": "training_runner",
+      "path": "experiments/route_recovery_20261004/r25_proposal/repair_01/train_paired_rasterizer.py",
+      "sha256": "3e886f0bb2fecc3363f610cb44a31aaabe982898f0b67c8c9fb175996b19abde",
+      "size_bytes": 9374,
+      "included_in_git": true
+    },
+    {
+      "key": "fit_only_support_audit",
+      "path": "experiments/route_recovery_20261004/r25_proposal/r25_training_rasterizer_support_preflight.json",
+      "sha256": "b8bf13edbe5e83748a742e7412ae58e0ebbd777e5d57f51e93d790b9483d46c6",
+      "size_bytes": 793967,
+      "included_in_git": true
+    },
+    {
+      "key": "decoder_fixtures",
+      "path": "experiments/route_recovery_20261004/r25_proposal/decoder_fixtures.json",
+      "sha256": "b5b46b7ccf6a05e267876cf5ff971e4155db51041d7ad566c63f7cb821332d39",
+      "size_bytes": 2828,
+      "included_in_git": true
+    },
+    {
+      "key": "released_candidate_checkpoint",
+      "path": "experiments/route_recovery_20261004/r25_proposal/repair_01/candidate_coco_epoch6.pth",
+      "sha256": "cf053df4739e8d91504b293e2165b7dbb1c1acd7bf4126087c047689cdcd4162",
+      "size_bytes": 228020573,
+      "included_in_git": false
+    },
+    {
+      "key": "released_test_submission",
+      "path": "submissions/submission_r25_coco_target_20261004.csv",
+      "sha256": "105668985c949fa330dd1bc22992206ad9e0f70088f67d90e7ea216714fe1a3c",
+      "size_bytes": 348462,
+      "included_in_git": true
+    },
+    {
+      "key": "obb_confirmation_test_csv",
+      "path": "submissions/submission_obb_refine_tta_c030.csv",
+      "sha256": "48869c134a2f03a52489594b944a4c8ed70f9e26cb039626c46279019568c546",
+      "size_bytes": 372063,
+      "included_in_git": true
+    },
+    {
+      "key": "obb_extras_test_csv",
+      "path": "submissions/submission_obb_refine_tta_c038.csv",
+      "sha256": "10ce194b6643de3e9b476f8edb03326e4af41eb14961f63eb8e01aee6e9b93d3",
+      "size_bytes": 324086,
+      "included_in_git": true
+    }
+  ],
+  "release_code_sha256": [
+    {
+      "path": "experiments/aspect_refiner_r25.py",
+      "sha256": "b4a29b9c970cb0ce341aa021c31162747689a3490a3b35e7731b70963479abeb"
+    },
+    {
+      "path": "experiments/evaluate_hbb_adaptation.py",
+      "sha256": "2b47f3ddc13e80ae9c2cffb2653536b50757ce7790daffcd113565a66f526779"
+    },
+    {
+      "path": "experiments/evaluate_proposal_adaptation.py",
+      "sha256": "451d24baf4517604b2f41662511174f00b1441c8431bd77340db3e20f92723b5"
+    },
+    {
+      "path": "experiments/export_r25_probe.py",
+      "sha256": "acf64724fff32a97d758e77608c7aa1554398a260963b5169c4e44c1c9bd2e05"
+    },
+    {
+      "path": "experiments/mask_correction_r17.py",
+      "sha256": "ed98570dc1c284c471899fab32d17a56fd9ed99b506262a4eda69737b089ff95"
+    },
+    {
+      "path": "experiments/route_recovery_20261004/r25_proposal/repair_01/export_test_after_gate.py",
+      "sha256": "190908661a87dd8c9fcf2355858895ec7f20838fca7f4edac80455e1cdc9fd8b"
+    },
+    {
+      "path": "experiments/route_recovery_20261004/r25_proposal/repair_01/train_paired_rasterizer.py",
+      "sha256": "3e886f0bb2fecc3363f610cb44a31aaabe982898f0b67c8c9fb175996b19abde"
+    },
+    {
+      "path": "experiments/route_recovery_20261004/r25_proposal/repair_01/validate_paired_rasterizer.py",
+      "sha256": "e57113555f035e10be0c453ae1625d693c883d250e95ea68c676cda42958e062"
+    },
+    {
+      "path": "src/assemble_obb_gate_submission.py",
+      "sha256": "f849702c44cabe4bc8c0b5c515fc8371bfc3ad6d3f367f9e37d20fdee5aaafed"
+    },
+    {
+      "path": "src/frozen_mask_quality.py",
+      "sha256": "1959cc99c6843d617842872894dba8970bc16f9c65b061bb185adbb613fc88fa"
+    },
+    {
+      "path": "src/obb_utils.py",
+      "sha256": "431777e1296fc6a0a7fb7b006bf1653fc11b3c9b65ea93c6c2cd4ad1f5b9e916"
+    },
+    {
+      "path": "src/predict_obb_refine.py",
+      "sha256": "1c111a1e2f4b0241736f354a64e3fdf2b73479dc4d27e955e2a848e0d792366d"
+    }
+  ]
+}

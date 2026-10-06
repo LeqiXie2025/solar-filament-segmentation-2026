@@ -1,0 +1,78 @@
+{
+  "status": "passed",
+  "device": "cpu",
+  "fit_only": true,
+  "checks": {
+    "repaired_control_matches_original_r25_decode_consensus_mask_bitwise": true,
+    "repaired_candidate_matches_independent_frPyObjects_merge_decode_with_same_consensus_members_bitwise": true
+  },
+  "fixtures": [
+    {
+      "file_name": "20151224133734Ch.jpeg",
+      "source_index": 5065,
+      "consensus_members": 1,
+      "segmentation_type": "polygon",
+      "polygon_components": 1,
+      "control_exact_original_cv2": true,
+      "candidate_exact_independent_coco": true,
+      "full_frame_pixels_different": 70,
+      "projected_512_pixels_different": 4909
+    },
+    {
+      "file_name": "20130319144654Bh.jpeg",
+      "source_index": 1974,
+      "consensus_members": 2,
+      "segmentation_type": "polygon",
+      "polygon_components": 1,
+      "control_exact_original_cv2": true,
+      "candidate_exact_independent_coco": true,
+      "full_frame_pixels_different": 495,
+      "projected_512_pixels_different": 2929
+    },
+    {
+      "file_name": "20150706083014Th.jpeg",
+      "source_index": 4718,
+      "consensus_members": 2,
+      "segmentation_type": "polygon",
+      "polygon_components": 1,
+      "control_exact_original_cv2": true,
+      "candidate_exact_independent_coco": true,
+      "full_frame_pixels_different": 290,
+      "projected_512_pixels_different": 6190
+    },
+    {
+      "file_name": "20110826074214Th.jpeg",
+      "source_index": 420,
+      "consensus_members": 2,
+      "segmentation_type": "polygon",
+      "polygon_components": 1,
+      "control_exact_original_cv2": true,
+      "candidate_exact_independent_coco": true,
+      "full_frame_pixels_different": 300,
+      "projected_512_pixels_different": 3630
+    },
+    {
+      "file_name": "20140212024554Uh.jpeg",
+      "source_index": 3039,
+      "consensus_members": 2,
+      "segmentation_type": "polygon",
+      "polygon_components": 1,
+      "control_exact_original_cv2": true,
+      "candidate_exact_independent_coco": true,
+      "full_frame_pixels_different": 333,
+      "projected_512_pixels_different": 4203
+    }
+  ],
+  "multipart_polygon_fixture": {
+    "source": "synthetic because no multipart polygons exist in the R25 fit annotations",
+    "both_arms_match_their_references_bitwise": true,
+    "components": 2,
+    "cv2_pixels": 519,
+    "coco_pixels": 457
+  },
+  "rle_fallback_fixture": {
+    "source": "synthetic because no RLE exists in the R25 fit annotations",
+    "both_arms_preserve_original_rle_decode_bitwise": true,
+    "pixels": 154
+  }
+}
