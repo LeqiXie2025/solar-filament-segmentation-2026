@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "checks": [
+    "28 retained Python dependency modules compile",
+    "3 release entry points import without training/inference",
+    "All frozen release-code SHA256 identities preserved",
+    "All original crop utility AST statements preserved; missing helper appended",
+    "All 3 submission CSVs unchanged byte-for-byte",
+    "Export prerequisites audited read-only against local project: 342 files PASS",
+    "Training prerequisites audited read-only against local project: 586 files PASS"
+  ],
+  "full_gpu_training_or_180_test_replay_performed": false,
+  "dependency_versions": "Current local maintenance environment; historical full lockfile unavailable"
+}

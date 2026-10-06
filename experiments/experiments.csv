@@ -1,7 +1,0 @@
-experiment_id,date,model,input_size,loss,selection_metric,split,validation_dice,validation_pq,public_score,submission_file,notes
-e5,2026-08-24,smp_unet_resnet34,512,dice_bce,patch_dice(contaminated),time,0.5424,0.4056,,,"tp=507 fp=156 fn=170; 旧基线, 选点指标被空patch污染"
-dicebce_stable_e3,2026-08-24,smp_unet_resnet34,512,dice_bce,pq,time,0.5964,0.4554,,,"tp=501 fp=124 fn=176; 当前最优, 换PQ选点+5PQ, 纯精度提升"
-tversky_rotval_e8,2026-08-24,smp_unet_resnet34,512,tversky,pq,time,,0.4478,,,"fullval_pq=0.448, seed3407; 未超dicebce"
-unetpp_focal_pq_e8,2026-08-24,smp_unetplusplus,512,focal_tversky,pq,time,,0.4343,,,"fullval_pq=0.434"
-unetpp_focal_pq_fast_e5,2026-08-24,smp_unetplusplus,512,focal_tversky,pq,time,,0.4387,,,"fullval_pq=0.439"
-deeplabv3plus_random_e10,2026-08-24,smp_deeplabv3plus,512,dice_bce,patch_dice,random,,0.0,,,"random split, 未诚实评测"

@@ -1,7 +1,7 @@
-# Submissions
+# Release submission files
 
-Put generated Kaggle submission files here locally.
+- `submission_r25_coco_target_20261004.csv`: user-reported Public 0.38 release; 180 test images accounted for, 1227 nonempty instance rows.
+- `submission_obb_refine_tta_c030.csv`: frozen auxiliary confirmation predictions.
+- `submission_obb_refine_tta_c038.csv`: frozen auxiliary extra-proposal predictions. `c038` is a detector configuration, not a leaderboard score.
 
-Do not commit generated submissions by default. For each submitted file, record
-the experiment id, local validation score, public leaderboard score, file name,
-and notes in `experiments/experiments.csv`.
+New local exports are versioned rather than overwriting these files. No script uploads to Kaggle.

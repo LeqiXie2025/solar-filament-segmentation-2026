@@ -135,3 +135,21 @@ def decode_consensus_mask(record: dict) -> np.ndarray:
     if not masks:
         return decode_record_mask(record).astype(np.float32)
     return np.mean(np.stack(masks, axis=0).astype(np.float32), axis=0)
+
+
+def crop_bounds_from_bbox_rect(
+    bbox: tuple[float, float, float, float],
+    height: int,
+    width: int,
+    pad: float = 0.50,
+) -> tuple[int, int, int, int]:
+    """Keep the proposal aspect ratio so thin objects occupy more pixels."""
+    x, y, box_w, box_h = [float(v) for v in bbox]
+    x_pad = max(16.0, box_w * float(pad))
+    y_pad = max(16.0, box_h * float(pad))
+    return (
+        int(round(x - x_pad)),
+        int(round(y - y_pad)),
+        int(round(x + box_w + x_pad)),
+        int(round(y + box_h + y_pad)),
+    )
